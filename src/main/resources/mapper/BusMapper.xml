@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.BusMapper">
+
+	<resultMap type="com.topsun.entity.BusInfo" id="busInfo">
+		<id property="busID" jdbcType="INTEGER" column="busID"/>
+		<result property="plateNO" jdbcType="VARCHAR" column="plateNO"/>
+		<result property="plateColor" jdbcType="INTEGER" column="plateColor"/>
+		<result property="createTime" jdbcType="VARCHAR" column="createTime"/>
+		<result property="startTime" jdbcType="VARCHAR" column="startTime"/>
+		<result property="busType" jdbcType="INTEGER" column="busType"/>
+		<association property="driverInfo" javaType="com.topsun.entity.DriverInfo">
+			<id property="driverID" jdbcType="INTEGER" column="driverID"/>
+			<result property="driverName" jdbcType="VARCHAR" column="driverName"/>
+			<result property="qulificationNO" jdbcType="VARCHAR" column="qulificationNO"/>
+		</association>
+		<association property="company" javaType="com.topsun.entity.Company">
+			<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+			<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+			<result property="parentID" jdbcType="INTEGER" column="parentID"/>
+			<result property="parentName" jdbcType="VARCHAR" column="parentName"/>
+		</association>	
+		<association property="terminalInfo" javaType="com.topsun.entity.TerminalInfo">
+			<id property="termID" jdbcType="INTEGER" column="termID"/>
+			<result property="simCard" jdbcType="VARCHAR" column="simCard"/>
+			<result property="channelCount" jdbcType="INTEGER" column="channelCount"/>
+		</association>	
+	</resultMap>
+	
+	
+	<select id="listBusInfo" parameterType="map" resultMap="busInfo">
+		SELECT 
+		  DATE_FORMAT(b.startTime,'%Y-%m-%d') AS startTime,
+		  DATE_FORMAT(b.createTime,'%Y-%m-%d') AS createTime, 
+		  b.busID,
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		  b.plateColor,
+		  b.busType,
+		  d.`driverID`,
+		  d.`driverName`,
+		  d.`qulificationNO`,
+		  t.`termID`,
+		  t.`simCard`,
+		  t.channelCount,
+		  r.`roulesID` AS companyID,
+		  r.`roulesName` AS companyName,
+		  r.subID AS parentID
+		FROM
+		  busInfo b 
+		  LEFT JOIN driverInfo d 
+		    ON b.`driverID` = d.`driverID` 
+		  LEFT JOIN terminalInfo t 
+		    ON b.`terminalID` = t.`termID` 
+		  LEFT JOIN org_roules r 
+		    ON b.`roulesID` = r.`roulesID` 
+		WHERE 1 = 1 AND b.delStatus = 0
+	  	<if test="map.authLeave == 1 and map.companyID != 1">
+	  		AND r.`headID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave == 2">
+	  		AND r.`subID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave == 3">
+	  		AND b.roulesID = #{map.companyID}
+	  	</if>
+	  	<if test="map.plateNO != null and map.plateNO != ''">
+	  		AND  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) LIKE CONCAT('%',#{map.plateNO},'%')
+	  	</if>
+	  	<if test="map.busID != null and map.busID != ''">
+	  		AND b.busID IN
+	  		<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+	  	</if>
+	  	ORDER BY b.busID DESC
+	</select>
+	
+	
+	<select id="getOnLineBus" parameterType="hashmap" resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			bus_current bc,
+			busInfo bi,
+			org_roules ors
+		WHERE
+			bc.busID = bi.busID 
+			AND bi.roulesID = ors.roulesID
+			AND bi.delStatus = 0
+			<if test="isNow == 1">
+			AND bc.server_time &gt;= DATE_SUB(now(), interval 10 minute)
+			</if>
+			<if test="isNow == 0">
+			AND bc.server_time &gt;= DATE_SUB(now(), interval 1 day)
+			</if>
+			<if test="authLeave == 1">
+				AND ors.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND ors.subID = #{companyID}
+			</if>
+	
+	</select>
+	
+	
+	<select id="getExceptionBus" parameterType="hashmap" resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			
+			busInfo bi
+			LEFT JOIN
+			bus_current bc ON bc.busID = bi.busID 
+			LEFT JOIN
+			org_roules ors ON bi.roulesID = ors.roulesID
+		WHERE
+			bi.delStatus = 0
+			AND (bc.server_time &lt;= DATE_SUB(now(), interval 2 day)
+			or bc.server_time is null)
+			<if test="authLeave == 1">
+				AND ors.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND ors.subID = #{companyID}
+			</if>
+	</select>
+
+	<select id="getBusIDByHeadId" resultType="string">
+		SELECT
+			b.busID
+		FROM
+			busInfo b
+				LEFT JOIN org_roules r ON b.roulesID = r.roulesID
+		WHERE
+			b.delStatus = 0
+		  and r.headID = 24
+	</select>
+	
+	<select id="getAllBusNum" parameterType="hashmap" resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			busInfo bi,
+			org_roules ors
+		WHERE
+			bi.roulesID = ors.roulesID
+			AND bi.delStatus = 0
+			<if test="authLeave == 1">
+				AND ors.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND ors.subID = #{companyID}
+			</if>
+	</select>
+	
+	<select id="getRunBusNum" parameterType="hashmap" resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0)
+		FROM
+			bus_current c 
+			LEFT JOIN busInfo b ON c.`busID` = b.`busID` AND b.delStatus = 0
+			LEFT JOIN org_roules ors ON ors.`roulesID` = b.`roulesID`
+		<where>
+			AND b.delStatus = 0
+			AND c.server_time &gt;= DATE_SUB(now(), interval 10 minute)
+			AND SUBSTRING(BIN(c.state),-2,1) = 1
+			<if test="acc == 1">
+				AND RIGHT(BIN(c.state), 1) = 1
+			</if>
+			<if test="acc == 2">
+				AND RIGHT(BIN(c.state), 1) = 0
+			</if>
+			<if test="authLeave == 1">
+				AND ors.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND ors.subID = #{companyID}
+			</if>
+		</where>
+	</select>
+	
+	
+	<select id="getOffLineNum"  parameterType="hashmap"  resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			`bus_current` c
+			LEFT JOIN busInfo b ON c.busID = b.busID
+			LEFT JOIN org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			c.server_time &lt; DATE_SUB(now(), interval 10 minute)
+			<if test="authLeave == 1">
+				AND r.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND r.subID = #{companyID}
+			</if>
+			AND b.`delStatus` = 0 
+	</select>
+	
+	<select id="getNoGpsNum" parameterType="hashmap"  resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			`bus_current` c
+			LEFT JOIN busInfo b ON c.busID = b.busID
+			LEFT JOIN org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			c.server_time &gt;= DATE_SUB(now(), interval 10 minute)
+			AND SUBSTRING(BIN(c.state),-2,1) = 0
+			<if test="authLeave == 1">
+				AND r.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND r.subID = #{companyID}
+			</if>
+			AND b.`delStatus` = 0 
+	</select>
+	
+	
+	<select id="getWorkNum" parameterType="hashmap"  resultType="int">
+		SELECT
+			COALESCE(COUNT(1),0) 
+		FROM
+			`bus_current` c
+			LEFT JOIN busInfo b ON c.busID = b.busID
+			LEFT JOIN org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.remark = 0
+			<if test="authLeave == 1">
+				AND r.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND r.subID = #{companyID}
+			</if>
+			AND b.`delStatus` = 0 
+	</select>
+	
+	
+	<select id="getAllBusID" resultType="string">
+		SELECT 
+		busID
+		FROM
+		busInfo
+		WHERE
+		delStatus = 0 
+	</select>
+
+	<select id="getBusInfoByBusID" parameterType="map" resultType="busInfo">
+		SELECT
+			c.busID,
+			IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+			b.busType,
+			DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s') AS gps_time,
+			DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+			BIN(c.state) AS state,
+			BIN(c.alarm) AS alarm,
+			c.latitude,
+			c.longitude,
+			c.altitude,
+			c.speed,
+			r.`roulesID` AS companyID,
+			r.`roulesName` AS companyName,
+			CASE
+				WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+					THEN 2
+				WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+					THEN 5
+				WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+			THEN 3
+			WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+			THEN 1
+			ELSE NULL
+		END AS busStatus,
+		  TIMESTAMPDIFF(SECOND, c.server_time, NOW()) - 600 AS leadTime
+		FROM
+			busInfo b
+		  LEFT JOIN  `bus_current` c
+		    ON c.`busID` = b.`busID`
+		  LEFT JOIN driverInfo d
+		    ON c.`driverID` = d.`driverID`
+		  LEFT JOIN org_roules r
+		    ON b.`roulesID` = r.`roulesID`
+        WHERE b.busID = #{busID}
+	</select>
+</mapper>

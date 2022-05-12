@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+<mapper namespace="com.topsun.mapper.ExportMapper">
+	
+	
+	
+	
+    
+    <select id="listOperation" resultType="com.topsun.model.OperationModel">
+        SELECT
+	      s.`subName`,
+	      IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+	      CASE
+	      l.`alarmType`
+	      WHEN 1
+	        THEN '离线'
+	      WHEN 2
+	        THEN '未定位'
+	      END AS alarmType,
+	      CASE
+	        WHEN (
+	          TIMESTAMPDIFF(MINUTE,c.server_time,NOW()) &lt; 20 AND BIN(c.state) LIKE
+	          '%1_')
+	        THEN '正常'
+	        WHEN ( TIMESTAMPDIFF( MINUTE, c.server_time, NOW( ) ) > 20 AND BIN( c.state ) LIKE '%0_' )
+	        THEN '离线且未定位'
+	        WHEN (BIN(c.state) LIKE '%0_')
+	        THEN '未定位'
+	        WHEN
+	          (TIMESTAMPDIFF(MINUTE,c.server_time,NOW()) > 20)
+	        THEN '离线'
+	      END AS
+	        alarmstate,
+	        DATE_FORMAT(l.`time`, '%Y-%m-%d %H:%i:%s') as time,
+	        DATE_FORMAT(c.`server_time`, '%Y-%m-%d %H:%i:%s') as server_time
+	    FROM
+	       `tuisongLog` l
+	    	LEFT JOIN busInfo b
+	    ON l.`plateNO` = b.`plateNO`
+	    LEFT JOIN bus_current c
+	    ON b.`busID` = c.`busID`
+	    LEFT JOIN org_subCompany s
+	    ON l.`subID` = s.`subID` 
+	    LEFT JOIN org_roules r
+	    ON b.roulesID = r.roulesID
+		WHERE 1=1
+	    <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+	 		AND l.time BETWEEN #{startTime} AND #{endTime}
+	   </if>
+	  	<if test="authLeave == 1">
+			AND r.headID = #{companyID}
+		</if>
+		<if test="authLeave == 2">
+	  		AND r.`subID` = #{companyID}
+	  	</if>
+	  	<if test="authLeave == 3">
+	  		AND r.`roulesID` = #{companyID}
+	  	</if>
+	  	<if test="busIDs != null and busIDs != ''">
+	  		AND b.busID IN
+	  		<foreach collection="busIDs" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+	  	</if>
+ 	    <!-- GROUP BY l.plateNO,
+	       l.alarmType= -->
+	    ORDER BY l.`subID`,
+	       l.alarmType
+    </select>
+	
+</mapper>

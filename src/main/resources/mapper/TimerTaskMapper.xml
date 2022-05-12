@@ -1,0 +1,700 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.TimerTaskMapper">
+
+
+	<select id="getLatestOutLineLog" parameterType="string"
+		resultType="com.topsun.entity.Outline">
+		SELECT
+		*
+		FROM
+		outlineTable
+		WHERE
+		busID = #{id}
+		ORDER BY outTime
+		DESC
+		LIMIT 1
+	</select>
+
+	<select id="listLatestOutLineLog" parameterType="string" resultType="com.topsun.entity.Outline">
+		SELECT
+			Id,
+			busID,
+		    startTime AS outTime,
+		    endTime AS inTime
+		FROM
+			offlineDisplacement
+		WHERE
+			busID = #{busID}
+		ORDER BY outTime DESC
+		LIMIT 1
+	</select>
+
+	<delete id="delLatestOutLineLog" parameterType="map">
+		DELETE
+		FROM
+		outlineTable
+		<where>
+			<if test="id != null and id != ''">
+				AND id = #{id}
+			</if>
+			<if test="time != null and time != ''">
+				AND outTime &lt; #{time}
+			</if>
+
+		</where>
+	</delete>
+
+	<delete id="deleteLatestOutLineLog" parameterType="map">
+		DELETE
+		FROM
+			offlineDisplacement
+		<where>
+			<if test="Id != null and Id != ''">
+				AND Id = #{Id}
+			</if>
+		</where>
+	</delete>
+
+	<insert id="insertOutLine" parameterType="list">
+		INSERT INTO outlineTable
+		VALUES
+		<foreach collection="list" separator="," item="item">
+			(
+			null,
+			#{item.busID},
+			#{item.logoutTime},
+			#{item.loginTime},
+			#{item.leadTime}
+			)
+
+		</foreach>
+
+	</insert>
+
+	<insert id="insertOfflineDisplacement" parameterType="list">
+		INSERT INTO offlineDisplacement(
+		    busID,startTime,endTime,beginLatitude,beginLongitude,endLatitude,endLongitude,times,alarmType
+		)
+		VALUES
+		<foreach collection="list" separator="," item="item">
+			(
+			#{item.busID},
+			#{item.startTime},
+			#{item.endTime},
+			#{item.beginLatitude},
+			#{item.beginLongitude},
+			#{item.endLatitude},
+			#{item.endLongitude},
+			#{item.times},
+			#{item.alarmType}
+			)
+		</foreach>
+	</insert>
+
+
+	<select id="getOutLine" parameterType="map"
+		resultType="com.topsun.entity.Outline">
+		SELECT
+		olt.id,
+		olt.busID,
+		DATE_FORMAT(olt.outTime,'%Y-%m-%d %H:%i:%s') AS outTime,
+		DATE_FORMAT(olt.inTime,'%Y-%m-%d %H:%i:%s') AS inTime ,
+		olt.longTime,
+		IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+		r.roulesName AS companyName
+		FROM
+		outlineTable olt
+		LEFT JOIN busInfo bi ON bi.busID =
+		olt.busID
+		LEFT JOIN
+		org_roules r ON
+		r.roulesID = bi.roulesID
+		<where>
+			<if test="busIDs != null">
+				AND olt.busID IN
+				<foreach collection="busIDs" separator="," item="item"
+					close=")" open="(">
+					#{item}
+				</foreach>
+			</if>
+			<if test="subID != null and subID != ''">
+				AND r.subID = #{subID}
+			</if>
+			<if test="roulesID != null and roulesID != ''">
+				AND r.roulesID = #{roulesID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND r.headID = #{headID}
+			</if>
+			<if
+				test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND olt.outTime BETWEEN #{startTime} AND #{endTime}
+			</if>
+		</where>
+		ORDER BY outTime DESC
+	</select>
+
+
+	<insert id="insertAlarmStatistics" parameterType="list">
+		INSERT INTO
+		AlarmStatistics
+		VALUES 
+		<foreach collection="list" separator="," item="item">
+			(
+			#{item.plateNO},
+			#{item.driverName},
+			#{item.GPS},
+			#{item.DSM},
+			#{item.BSD},
+			#{item.MOVE},
+			date_format(now(),'%Y-%m-%d'),
+			#{item.busID}
+			)
+
+		</foreach>
+
+
+	</insert>
+
+
+	<delete id="delAlarmStatistics" parameterType="map">
+		DELETE
+		FROM
+		AlarmStatistics
+		<where>
+			<if test="time != null and time != ''">
+				AND time &lt; #{time}
+			</if>
+		</where>
+	</delete>
+
+
+	<select id="getAlarmStatistics" parameterType="map"
+		resultType="com.topsun.entity.AlarmStatistics">
+		SELECT
+		ast.*
+		FROM
+		AlarmStatistics ast
+		LEFT JOIN busInfo bi ON bi.busID =
+		ast.busID
+		LEFT JOIN
+		org_roules r ON
+		r.roulesID = bi.roulesID
+		<where>
+			<if test="busIDs != null">
+				AND ast.busID IN
+				<foreach collection="busIDs" separator="," item="item"
+					close=")" open="(">
+					#{item}
+				</foreach>
+			</if>
+			<if test="subID != null and subID != ''">
+				AND r.subID = #{subID}
+			</if>
+			<if test="roulesID != null and roulesID != ''">
+				AND r.roulesID = #{roulesID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND r.headID = #{headID}
+			</if>
+			<if
+				test="time != null and time != ''">
+				AND ast.time = #{time}
+			</if>
+		</where>
+	</select>
+	
+	
+	<select id="getRoundSelect" parameterType="map"
+		resultType="com.topsun.entity.Round">
+		SELECT
+		rt.busID,
+		DATE_FORMAT(rt.startTime,'%Y-%m-%d %H:%i:%s') AS startTime,
+		DATE_FORMAT(rt.endTime,'%Y-%m-%d %H:%i:%s') AS endTime ,
+		rt.speed,
+		IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+		r.roulesName AS companyName,
+		rt.orientation,
+		rt.direction,
+		rt.start_direction,
+		rt.end_direction,
+		rt.latitude,
+		rt.longitude
+		FROM
+		roundTable rt
+		LEFT JOIN busInfo bi ON bi.busID =
+		rt.busID
+		LEFT JOIN
+		org_roules r ON
+		r.roulesID = bi.roulesID
+		<where>
+		AND rt.speed &lt; 60
+			<if test="busIDs != null">
+				AND rt.busID IN
+				<foreach collection="busIDs" separator="," item="item"
+					close=")" open="(">
+					#{item}
+				</foreach>
+			</if>
+			<if test="subID != null and subID != ''">
+				AND r.subID = #{subID}
+			</if>
+			<if test="roulesID != null and roulesID != ''">
+				AND r.roulesID = #{roulesID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND r.headID = #{headID}
+			</if>
+			<if test="speed != null and speed != ''">
+				AND rt.speed &gt; #{speed}
+			</if>
+			<if test="orientation != null and orientation != ''">
+				AND rt.orientation = #{orientation}
+			</if>
+			<if
+				test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND rt.startTime BETWEEN #{startTime} AND #{endTime}
+			</if>
+		</where>
+		ORDER BY startTime DESC
+	</select>
+	
+	
+	
+	
+	<select id="getRoundSelectForMonth" parameterType="map"
+		resultType="com.topsun.entity.Round">
+		SELECT
+		rt.busID,
+		rt.speed,
+		IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+		COUNT(1) AS num
+		FROM
+		roundTable rt
+		LEFT JOIN busInfo bi ON bi.busID =
+		rt.busID
+		LEFT JOIN
+		org_roules r ON
+		r.roulesID = bi.roulesID
+		<where>
+		AND rt.speed &lt; 60
+			<if test="busIDs != null">
+				AND rt.busID IN
+				<foreach collection="busIDs" separator="," item="item"
+					close=")" open="(">
+					#{item}
+				</foreach>
+			</if>
+			<if test="subID != null and subID != ''">
+				AND r.subID = #{subID}
+			</if>
+			<if test="roulesID != null and roulesID != ''">
+				AND r.roulesID = #{roulesID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND r.headID = #{headID}
+			</if>
+			<if test="speed != null and speed != ''">
+				AND rt.speed &gt; #{speed}
+			</if>
+			<if test="orientation != null and orientation != ''">
+				AND rt.orientation = #{orientation}
+			</if>
+			<if
+				test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND rt.startTime BETWEEN #{startTime} AND #{endTime}
+			</if>
+		</where>
+		GROUP BY rt.busID
+		ORDER BY num DESC
+	</select>
+
+	<select id="getOffline" parameterType="map" resultType="offline">
+		SELECT
+		    b.busID,
+			r.`roulesName` AS companyName,
+			b.`plateNO`,
+			t.`simCard`,
+			DATE_FORMAT(c.`server_time`,'%Y-%m-%d %H:%i:%s') AS server_time,
+			c.latitude,
+			c.longitude,
+			TIMESTAMPDIFF(SECOND,c.server_time,NOW()) AS duration
+		FROM
+			topsun_ztc.busInfo b
+			LEFT JOIN topsun_ztc.bus_current c ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+		<if test="authLeave == 1">
+			AND r.`headID` = #{companyID}
+		</if>
+		<if test="authLeave == 2">
+			AND r.`subID` = #{companyID}
+		</if>
+		AND c.`server_time` IS NOT NULL
+		AND c.server_time &lt;= DATE_SUB( now(), INTERVAL 7 DAY )
+		ORDER BY
+			r.`roulesID`
+	</select>
+
+	<select id="listOffline" parameterType="map" resultType="com.topsun.entity.OfflineBus">
+		SELECT
+		    b.busID,
+			r.`roulesCode` AS fleetName,
+			b.`plateNO` AS carNo,
+			t.`simCard` AS deviceNo,
+			DATE_FORMAT(c.`server_time`,'%Y-%m-%d %H:%i:%s') AS lastUploadTime,
+			CASE
+				WHEN b.busType = 1 THEN
+					'公交车'
+				WHEN b.busType = 2 THEN
+					'渣土车'
+				WHEN b.busType = 3 THEN
+					'搅拌车'
+				WHEN b.busType = 4 THEN
+					'集装箱'
+				ELSE
+					'五小工程车'
+				END AS carLabel,
+			c.latitude,
+			c.longitude,
+			TIMESTAMPDIFF(SECOND,c.server_time,NOW()) AS longTime
+		FROM
+			topsun_ztc.busInfo b
+			LEFT JOIN topsun_ztc.bus_current c ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+			AND r.`headID` = 24
+			AND c.`server_time` IS NOT NULL
+			AND c.server_time &lt;= DATE_SUB( now(), INTERVAL 7 DAY )
+		ORDER BY
+			r.`roulesID`
+	</select>
+
+	<select id="listOutageHistory" parameterType="map" resultType="offline">
+		SELECT
+		    b.busID,
+			r.`roulesName` AS companyName,
+			b.`plateNO`,
+			t.`simCard`,
+			DATE_FORMAT(h.`server_time`,'%Y-%m-%d %H:%i:%s') AS server_time,
+			h.latitude,
+			h.longitude,
+			TIMESTAMPDIFF(SECOND,h.server_time,NOW()) AS difference,
+			CASE
+				WHEN substring( bin( h.alarm ),-9, 1 )= 1 THEN
+					'终端主电源掉电'
+				WHEN substring( bin( h.alarm ),-8, 1 )= 1 THEN
+					'终端主电源欠压'
+				END AS 'alarmType'
+		FROM
+			${tableName} h
+			LEFT JOIN topsun_ztc.busInfo b ON h.busID = b.busID
+			LEFT JOIN topsun_ztc.bus_current c ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+		    AND c.`server_time` IS NOT NULL
+		    AND (substring( bin( h.alarm ),-9, 1 )= 1 OR substring( bin( h.alarm ),-8, 1 )= 1)
+		    <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND h.server_time BETWEEN #{startTime} AND #{endTime}
+			</if>
+		ORDER BY
+			r.`roulesID`,h.server_time DESC
+	</select>
+
+	<select id="listOutage" parameterType="map" resultType="offline">
+		SELECT
+		    b.busID,
+			r.`roulesName` AS companyName,
+			b.`plateNO`,
+			t.`simCard`,
+			DATE_FORMAT(c.`server_time`,'%Y-%m-%d %H:%i:%s') AS server_time,
+			c.latitude,
+			c.longitude,
+			TIMESTAMPDIFF(SECOND,c.server_time,NOW()) AS difference,
+			CASE
+				WHEN substring( bin( c.alarm ),-9, 1 )= 1 THEN
+					'终端主电源掉电'
+				WHEN substring( bin( c.alarm ),-8, 1 )= 1 THEN
+					'终端主电源欠压'
+				END AS 'alarmType'
+		FROM
+			topsun_ztc.busInfo b
+			LEFT JOIN topsun_ztc.bus_current c ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+			<if test="authLeave == 1">
+				AND r.`headID` = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND r.`subID` = #{companyID}
+			</if>
+		    AND c.`server_time` IS NOT NULL
+		    AND (substring( bin( c.alarm ),-9, 1 )= 1 OR substring( bin( c.alarm ),-8, 1 )= 1)
+		ORDER BY
+			r.`roulesID`,c.server_time DESC
+	</select>
+
+
+	<insert id="insertSpeedSelect" parameterType="list">
+		INSERT INTO bus_speed
+		VALUES
+		<foreach collection="list" separator="," item="item">
+			(
+			null,
+			#{item.busID},
+			#{item.plateNO},
+			#{item.latitude},
+			#{item.longitude},
+			#{item.speed},
+			#{item.startgps_time},
+			#{item.endgps_time},
+			#{item.times}
+			)
+
+		</foreach>
+
+	</insert>
+
+
+	<delete id="delSpeedSelectLog" parameterType="map">
+		DELETE
+		FROM
+		bus_speed
+		<where>
+			<if test="time != null and time != ''">
+				AND startgps_time &lt; #{time}
+			</if>
+		</where>
+
+	</delete>
+
+	<select id="getGpsAlarm" parameterType="map" resultType="com.topsun.entity.AlarmType">
+		SELECT
+			b.`plateNO`,
+			r.`roulesName` AS companyName,
+			w.simCard,
+			w.startTime,
+			w.beginLatitude,
+			w.beginLongitude,
+		    w.endTime,
+		    w.endLatitude,
+		    w.endLongitude,
+			w.times,
+			CASE
+				WHEN substring( bin(w.alarmType),-6, 1 )= 1 THEN
+					'GNSS天线未接或被剪断'
+				END AS 'alarmType',
+		    b.busID
+		FROM
+			${tableName} w
+			LEFT JOIN topsun_ztc.terminalInfo t ON w.simCard = t.simCard
+			LEFT JOIN busInfo b ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.bus_current c ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+			<if test="authLeave == 1">
+				AND r.`headID` = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND r.`subID` = #{companyID}
+			</if>
+			<if test="busIDs != null">
+				AND b.busID IN
+				<foreach collection="busIDs" separator="," item="item" close=")" open="(">
+					#{item}
+				</foreach>
+			</if>
+			<if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND w.startTime BETWEEN #{startTime} AND #{endTime}
+			</if>
+		    AND c.`server_time` IS NOT NULL
+			AND w.times &gt;= 3600
+		ORDER BY w.startTime desc
+	</select>
+
+
+	<select id="listCameraAlarm" parameterType="map" resultType="com.topsun.entity.CameraAlarm">
+		SELECT
+			b.busID,
+			r.`roulesName` companyName,
+			b.`plateNO`,
+			t.`simCard`,
+			DATE_FORMAT(c.`server_time`,'%Y-%m-%d %H:%i:%s') AS serverTime,
+			c.latitude,
+			c.longitude,
+			CASE
+				WHEN substring( bin( c.alarm ),-12, 1 )= 1 THEN
+					'摄像头故障'
+				END AS 'alarmType'
+		FROM
+			topsun_ztc.bus_current c
+			LEFT JOIN topsun_ztc.busInfo b ON b.`busID` = c.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+		    <if test="authLeave == 1">
+				AND r.`headID` = #{companyID}
+			</if>
+		    <if test="authLeave == 2">
+			    AND r.`subID` = #{companyID}
+		    </if>
+		    <if test="headID != null and headID != ''">
+				AND r.`headID` = #{headID}
+			</if>
+		    <if test="subID != null and subID != ''">
+				AND r.`subID` = #{subID}
+			</if>
+			AND substring( bin( c.alarm ),-12, 1 ) = 1
+			AND c.`server_time` IS NOT NULL
+		ORDER BY
+			r.`roulesID`, c.server_time
+	</select>
+
+	<select id="listHistoryCameraAlarm" parameterType="map" resultType="com.topsun.entity.CameraAlarm">
+		SELECT
+			b.busID,
+			r.`roulesName`,
+			b.`plateNO`,
+			t.`simCard`,
+			DATE_FORMAT(h.`server_time`,'%Y-%m-%d %H:%i:%s') AS serverTime,
+			h.latitude,
+			h.longitude,
+			CASE
+				WHEN substring( bin( h.alarm ),-12, 1 )= 1 THEN
+					'摄像头故障'
+				END AS 'alarmType'
+		FROM
+			${tableName} h
+			LEFT JOIN topsun_ztc.busInfo b ON b.`busID` = h.`busID`
+			LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+			LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+		WHERE
+			b.`delStatus` = 0
+		    <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+		  		AND h.`server_time` BETWEEN #{startTime} AND #{endTime}
+			</if>
+			AND substring( bin( h.alarm ),-12, 1 ) = 1
+			AND h.`server_time` IS NOT NULL
+		ORDER BY
+			r.`roulesID`, h.server_time
+	</select>
+
+
+	<select id="listOfflineDisplacement" parameterType="map" resultType="com.topsun.entity.OfflineDisplacement">
+		SELECT
+			IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+			r.roulesName AS companyName,
+		    t.simCard,
+			DATE_FORMAT(olt.outTime,'%Y-%m-%d %H:%i:%s') AS startTime,
+			DATE_FORMAT(olt.inTime,'%Y-%m-%d %H:%i:%s') AS endTime ,
+			olt.longTime AS times,
+			olt.busID
+		FROM
+			outlineTable olt
+			LEFT JOIN busInfo bi ON bi.busID = olt.busID
+			LEFT JOIN topsun_ztc.terminalInfo t ON bi.`terminalID` = t.`termID`
+			LEFT JOIN org_roules r ON r.roulesID = bi.roulesID
+		<where>
+			olt.inTime IS NOT NULL
+			<if test="plateNO != null and plateNO != ''">
+				AND bi.plateNO LIKE CONCAT('%',#{plateNO},'%')
+			</if>
+			<if test="subID != null and subID != ''">
+				AND r.subID = #{subID}
+			</if>
+			<if test="roulesID != null and roulesID != ''">
+				AND r.roulesID = #{roulesID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND r.headID = #{headID}
+			</if>
+			<if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+				AND olt.outTime BETWEEN #{startTime} AND #{endTime}
+			</if>
+		</where>
+		ORDER BY outTime DESC
+	</select>
+
+
+	<select id="getHistoryByBusID" resultType="com.topsun.entity.DataLocation">
+		SELECT
+		c.busID,
+		c.`server_time`,
+		c.latitude,
+		c.longitude
+		FROM
+		${tableName} c
+		WHERE
+			c.busID = #{busID}
+            AND c.server_time = #{time}
+        LIMIT 1
+	</select>
+
+	<select id="selectOffline" parameterType="map" resultType="com.topsun.entity.OfflineDisplacement">
+		SELECT
+		@rownum:=@rownum+1 AS number,
+		a.*
+		FROM
+			(SELECT @rownum := 0) n,
+			(SELECT
+				b.`plateNO`,
+				r.`roulesName` AS companyName,
+				t.simCard,
+				o.startTime,
+				o.beginLatitude,
+				o.beginLongitude,
+				o.endTime,
+				o.endLatitude,
+				o.endLongitude,
+				o.times,
+				CASE
+					WHEN o.alarmType = 1 THEN "离线位移"
+		  		END AS alarmType,
+				ROUND(
+				6378.138 * 2 * ASIN(
+				SQRT(POW(SIN(( o.beginLatitude * PI() / 180 - o.endLatitude * PI() / 180) / 2 ),2)
+				+ COS(o.beginLatitude * PI() / 180) * COS(o.endLatitude * PI() / 180)
+				* POW(SIN((o.beginLongitude * PI() / 180 - o.endLongitude * PI() / 180) / 2 ),  2))) * 1000
+				) AS distance,
+				o.busID,
+				o.Id
+			FROM
+				offlineDisplacement o
+				LEFT JOIN topsun_ztc.busInfo b ON o.busID = b.busID
+				LEFT JOIN topsun_ztc.terminalInfo t ON b.`terminalID` = t.`termID`
+				LEFT JOIN topsun_ztc.org_roules r ON b.`roulesID` = r.`roulesID`
+			WHERE
+				o.endTime IS NOT NULL
+				<if test="plateNO != null and plateNO != ''">
+					AND b.plateNO LIKE CONCAT('%',#{plateNO},'%')
+				</if>
+				<if test="headID != null and headID != ''">
+					AND r.headID = #{headID}
+				</if>
+				<if test="subID != null and subID != ''">
+					AND r.subID = #{subID}
+				</if>
+				<if test="roulesID != null and roulesID != ''">
+					AND r.roulesID = #{roulesID}
+				</if>
+				<if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+					AND o.startTime BETWEEN #{startTime} AND #{endTime}
+				</if>
+			ORDER BY o.startTime DESC) a
+		WHERE
+            a.distance > 1000
+	</select>
+
+</mapper>

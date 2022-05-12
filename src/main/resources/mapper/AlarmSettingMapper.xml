@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+<mapper namespace="com.topsun.mapper.AlarmSettingMapper"> 
+	
+	
+	<select id="getPopupSetting" parameterType="map" resultType="com.topsun.entity.PopupSetting">
+	
+		SELECT 
+		* 
+		FROM
+		popupSetting
+		WHERE
+		userID = #{userID}
+	
+	</select>
+	
+	<update id="settingPopup" parameterType="com.topsun.entity.PopupSetting">
+	
+		INSERT INTO popupSetting(userID,setting,isUser)
+		VALUES
+		(#{userID},#{popupSetting.setting},#{popupSetting.isUser})
+		ON DUPLICATE KEY
+		UPDATE
+		userID = VALUES(userID),
+		setting = VALUES(setting),
+		isUser = VALUES(isUser)
+	
+	</update>
+	
+	
+	
+	<select id="getSetting" parameterType="map" resultType="com.topsun.entity.BusInfo">
+	
+		SELECT 
+		b.busID,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		b.remark AS type
+		FROM
+		busInfo b
+		left join org_roules r on r.roulesID = b.roulesID
+		<where>
+			<!-- <if test="type != null">
+				AND b.remark = #{type}
+			</if> -->
+
+		  	<if test="subID != null and subID != ''">
+		  		AND r.`subID` = #{subID}
+		  	</if>
+		</where>
+		
+	
+	</select>
+	
+	<update id="setting" parameterType="map">
+	
+		update busInfo set remark = #{type} 
+		<where>
+			<if test="busID != null ">
+	  		AND busID IN
+	  		<foreach collection="busID" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+	  	</if>
+		</where> 
+		
+	</update>
+	
+	
+	<update id="settingTime" parameterType="map">
+	
+		update org_subCompany set startCar = #{startCar} 
+		<where>
+		  	<if test="subID != null and subID != ''">
+		  		AND subID = #{subID}
+		  	</if>
+		</where> 
+		
+	</update>
+	
+	
+	<select id="getSettingTime" parameterType="map" resultType="string">
+	
+		SELECT 
+		startCar
+		FROM
+		org_subCompany 
+		<where>
+		  	<if test="subID != null and subID != ''">
+		  		AND subID = #{subID}
+		  	</if>
+		</where>
+		
+	
+	</select>
+	
+
+</mapper>

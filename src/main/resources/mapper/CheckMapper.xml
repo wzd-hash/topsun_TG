@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+
+<mapper namespace="com.topsun.mapper.CheckMapper">
+	
+	<!-- <insert id="addCheck" parameterType="map">
+		INSERT INTO checks(busID,plateNO,time,checks) 
+		VALUES(#{busID},#{plateNO},DATE_FORMAT(NOW(),'%Y-%m-%d'),#{checks})
+		ON DUPLICATE KEY
+		UPDATE 
+		time = VALUES(time),
+		checks = VALUES(checks)
+	</insert> -->
+
+	<select id="getChecks" parameterType="map" resultType="check">
+		SELECT 
+		IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+		bi.busID,
+		c.time,
+		c.checks,
+		c.remark,
+		c.isSure,
+		DATE_FORMAT(c.checkTime,'%H:%i') AS checkTime,
+		DATE_FORMAT(c.sureTime,'%H:%i') AS sureTime
+		FROM
+		busInfo bi 
+		LEFT JOIN checks c ON c.busID = bi.busID 
+		<if test="time != null and time != '' ">
+		  AND c.time = #{time} 
+		</if>
+		<where>
+		bi.delStatus = 0
+		<if test="busID != null and busID != ''">
+	  		AND bi.busID IN
+	  		<foreach collection="busID" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+	  	</if>
+	  	
+		</where>
+		ORDER BY bi.`busNO`,bi.`plateNO`
+	</select>
+	
+	
+	<!-- <update id="updateChecks" parameterType="map">
+		UPDATE
+		checks
+		<set>
+		<if test="remark != null and remark != ''">
+		remark = #{remark},
+		</if>
+		<if test="isSure != null and isSure != ''">
+		isSure = #{isSure},
+		</if>
+		</set>
+		WHERE
+		busID = #{busID}
+		AND time = #{time}
+	</update> -->
+
+
+</mapper>

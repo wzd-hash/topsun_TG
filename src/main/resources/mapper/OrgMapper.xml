@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+
+
+<mapper namespace="com.topsun.mapper.OrgMapper">
+	<resultMap type="com.topsun.entity.BusInfo" id="busTree">
+		<id property="busID" column="busID"/>
+		<result property="plateNO" column="plateNO"/>
+		<result property="id" column="id"/>
+		<result property="label" column="label"/>
+		<result property="busStatus" column="busStatus"/>
+		<result property="busType" column="busType"/>
+		<result property="alarmStatus" column="alarmStatus"/>
+		<association property="terminalInfo" javaType="com.topsun.entity.TerminalInfo">
+			<id property="termID" jdbcType="INTEGER" column="termID"/>
+			<result property="simCard" jdbcType="VARCHAR" column="simCard"/>
+			<result property="channelCount" jdbcType="INTEGER" column="channelCount"/>
+		</association>	
+		<association property="company" javaType="com.topsun.entity.Company">
+			<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+			<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+			<result property="parentID" jdbcType="INTEGER" column="parentID"/>
+			<result property="parentName" jdbcType="VARCHAR" column="parentName"/>
+		</association>
+	</resultMap>
+	
+	<resultMap type="headCompany" id="roulesTree">
+	
+		<id property="headID" column="headID"/>
+		<result property="headName" column="headName"/>
+		<result property="headCode" column="headCode"/>
+		<collection property="queueList" ofType="queue">
+				<id property="queueName" column="queueName"/>
+		<collection property="subCompanyList" ofType="subCompany" >
+			<id property="subID" column="subID"/>
+			<result property="subName" column="subName"/>
+			<result property="subCode" column="subCode"/>
+			<result property="headID" column="sub_headID"/>
+			<collection property="roulesList" ofType="roules">
+				<id property="roulesID" column="roulesID"/>
+				<result property="roulesName" column="roulesName"/>
+				<result property="roulesCode" column="roulesCode"/>
+				<result property="subID" column="roules_subID"/>
+				<result property="headID" column="roules_headID"/>
+				<result property="onlineNum" column="onlineNum"/>
+				<result property="outlineNum" column="outlineNum"/>
+				<result property="stopNum" column="stopNum"/>
+				<result property="noGpsNum" column="noGpsNum"/>
+				<result property="exceptionNum" column="exceptionNum"/>
+			</collection>
+		</collection>
+		</collection>
+	</resultMap>
+	
+	
+	
+
+	<select id="listOrgTreeRoules" parameterType="map" resultMap="roulesTree">
+		SELECT 
+		  h.`headID`,
+		  h.`headName`,
+		  s.`subID`,
+		  s.`subName`,
+		  s.`queueName`,
+		  r.`roulesID`,
+		  r.`roulesName`,
+		  COUNT(
+		    IF(
+		      TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11,
+		      1,
+		      NULL
+		    )
+		  ) AS onlineNum,
+		  COUNT(
+		    IF(
+		      TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null,
+		      1,
+		      NULL
+		    )
+		  ) AS outlineNum ,
+		    COUNT(
+		    IF(
+		      TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		      ,
+		      1,
+		      NULL
+		      )
+		    )AS stopNum ,
+		  COUNT(
+		    IF(
+		      TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		      ,
+		      1,
+		      NULL)
+		  ) AS noGpsNum<!--  ,
+		   COUNT(
+		    IF(
+		      c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+			or c.server_time is null
+		      ,
+		      1,
+		      NULL)
+		  ) AS exceptionNum -->
+		FROM
+		  org_headCompany h 
+		  LEFT JOIN org_subCompany s 
+		    ON (
+		      h.`headID` = s.`headID` 
+		      AND s.`delStatus` = 0
+		    ) 
+		  LEFT JOIN org_roules r 
+		    ON (
+		      s.`subID` = r.`subID` 
+		      AND r.`delStatus` = 0
+		    ) 
+		  LEFT JOIN busInfo b 
+		    ON (
+		      r.`roulesID` = b.`roulesID` 
+		      AND b.`delStatus` = 0
+		    ) 
+		  LEFT JOIN bus_current c 
+    		ON b.`busID` = c.`busID`  
+		<where>
+			AND h.delStatus = 0
+			<if test="authLeave == 1">
+			 	AND h.`headID` = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				AND s.subID = #{companyID}
+			</if>
+			<if test="authLeave == 3">
+				AND h.`headID` = 24
+			</if>
+		</where>
+		GROUP BY h.`headID`,s.`subID`,r.`roulesID`
+	</select>
+	
+	<select id="listOrgTreeBus" parameterType="java.lang.Integer" resultMap="busTree">
+		SELECT 
+		  b.`busID`,
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		  b.`busID` AS id,
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS label,
+		  b.roulesID AS companyID,
+		  t.`termID`,
+		  t.`simCard`,
+		  CASE
+		  	<!-- WHEN (c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+			or c.server_time is null)
+		    THEN 4  -->
+		  	WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		    THEN 2 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0 
+		    THEN 5 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10 
+		    THEN 3 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11 
+		    THEN 1
+		    ELSE NULL 
+		  END AS busStatus,
+		  t.channelCount,
+		  b.busNO
+		FROM
+		  busInfo b 
+		  LEFT JOIN bus_current c 
+		    ON b.`busID` = c.`busID` 
+		  LEFT JOIN terminalInfo t 
+		    ON b.`terminalID` = t.`termID`
+		  LEFT JOIN org_roules r 
+		  	ON b.roulesID = r.roulesID
+		    <where>
+		    	AND b.delStatus = 0
+		    	<if test="authLeave == 1">
+				 	AND r.`headID` = #{companyID}
+				</if>
+				<if test="authLeave == 2">
+					AND r.subID = #{companyID}
+				</if>
+		    	<if test="roulesID != null and roulesID != ''">
+			    	AND b.roulesID IN 
+			    	<foreach collection="roulesID" item="item" open="(" separator="," close=")">
+						#{item}
+					</foreach>
+		    	</if>
+		    	<if test="plateNO != null and plateNO != ''">
+		    		AND  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) LIKE CONCAT('%',#{plateNO},'%')
+		    	</if>
+		    	<if test="busID != null and busID != ''">
+		    		AND b.busID = #{busID}
+		    	</if>
+		    	<if test="online != null and online != ''">
+		    		<if test="online == 1">
+		    			AND TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+		    		</if>
+		    		<if test="online == 2">
+		    			AND (TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null)
+		    		</if>
+		    		<if test="online == 3">
+		    			AND TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		    		</if>
+		    		<!-- <if test="online == 4">
+		    			AND (c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+						or c.server_time is null)
+		    		</if> -->
+		    		<if test="online == 5">
+		    			AND TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		    		</if>
+		    	</if>
+		    </where> 
+		    ORDER BY b.`busNO`,b.plateNO
+	</select>
+
+
+</mapper>

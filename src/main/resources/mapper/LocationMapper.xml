@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.topsun.mapper.LocationMapper">
+    <insert id="insertLocation">
+        INSERT INTO location (
+            <if test="areaName != null and areaName != ''">areaName,</if>
+            <if test="areaType != null and areaType != ''">areaType,</if>
+            <if test="earthwork != null and earthwork != ''">earthwork,</if>
+            <if test="fullSize != null and fullSize != ''">fullSize,</if>
+            <if test="mapCenter != null and mapCenter != ''">mapCenter,</if>
+            <if test="polygon != null and polygon != ''">polygon,</if>
+            <if test="soilFieldBillboard != null and soilFieldBillboard != ''">soilFieldBillboard,</if>
+            <if test="useType != null and useType != ''">useType,</if>
+            <if test="companyID != null and companyID != ''">companyID,</if>
+            createTime,
+            <if test="beginTime != null and beginTime != ''">beginTime,</if>
+            <if test="endTime != null and endTime != ''">endTime,</if>
+            <if test="frozenEndTime != null and frozenEndTime != ''">frozenEndTime,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            delStatus
+        )VALUES (
+            <if test="areaName != null and areaName != ''">#{areaName},</if>
+            <if test="areaType != null and areaType != ''">#{areaType},</if>
+            <if test="earthwork != null and earthwork != ''">#{earthwork},</if>
+            <if test="earthwork != null and earthwork != ''">#{fullSize},</if>
+            <if test="mapCenter != null and mapCenter != ''">#{mapCenter},</if>
+            <if test="polygon != null and polygon != ''">#{polygon},</if>
+            <if test="soilFieldBillboard != null and soilFieldBillboard != ''">#{soilFieldBillboard},</if>
+            <if test="useType != null and useType != ''">#{useType},</if>
+            <if test="companyID != null and companyID != ''">#{companyID},</if>
+            NOW(),
+            <if test="beginTime != null and beginTime != ''">#{beginTime},</if>
+            <if test="endTime != null and endTime != ''">#{endTime},</if>
+            <if test="frozenEndTime != null and frozenEndTime != ''">#{frozenEndTime},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            0
+        )
+    </insert>
+    <update id="updateLocationByType">
+        UPDATE location
+        <set>
+            <if test="areaName != null and areaName != ''">areaName = #{areaName},</if>
+            <if test="earthwork != null and earthwork != ''">earthwork = #{earthwork},</if>
+            <if test="earthwork != null and earthwork != ''">fullSize = #{fullSize},</if>
+            <if test="mapCenter != null and mapCenter != ''">mapCenter = #{mapCenter},</if>
+            <if test="polygon != null and polygon != ''">polygon = #{polygon},</if>
+            <if test="soilFieldBillboard != null and soilFieldBillboard != ''">soilFieldBillboard = #{soilFieldBillboard},</if>
+            <if test="useType != null and useType != ''">useType = #{useType},</if>
+            <if test="companyID != null and companyID != ''">companyID = #{companyID},</if>
+            <if test="beginTime != null and beginTime != ''">beginTime = #{beginTime},</if>
+            <if test="endTime != null and endTime != ''">endTime = #{endTime},</if>
+            <if test="frozenEndTime != null and frozenEndTime != ''">frozenEndTime = #{frozenEndTime},</if>
+            <if test="remark != null and remark != ''">remark = #{remark},</if>
+            <if test="delStatus != null and delStatus != ''">delStatus = #{delStatus}</if>
+        </set>
+        WHERE ID = #{ID}
+    </update>
+
+    <update id="delLocation">
+        UPDATE location
+        SET delStatus = 1
+        WHERE ID = #{id}
+    </update>
+
+
+    <select id="listLocationByType" parameterType="map" resultType="com.topsun.entity.Location">
+        SELECT 
+               l.ID,
+               l.areaName,
+               l.areaType,
+               l.earthwork,
+               l.fullSize,
+               l.mapCenter,
+               l.polygon,
+               l.soilFieldBillboard,
+               l.useType,
+               l.companyID,
+               DATE_FORMAT(l.createTime,'%Y-%m-%d %H:%i:%s') AS createTime,
+               DATE_FORMAT(l.beginTime,'%Y-%m-%d') AS beginTime,
+               DATE_FORMAT(l.endTime,'%Y-%m-%d') AS endTime,
+               DATE_FORMAT(l.frozenEndTime,'%Y-%m-%d') AS frozenEndTime,
+               l.remark,
+               l.delStatus,
+               r.roulesName AS companyName
+        FROM 
+             location l
+             LEFT JOIN org_roules r ON r.roulesID = l.companyID
+        WHERE
+            l.delStatus = 0
+            <if test="areaType != null and areaType != ''">
+                AND l.areaType = #{areaType}
+            </if>
+            <if test="areaName != null and areaName != ''">
+                AND l.areaName LIKE CONCAT('%',#{areaName},'%')
+            </if>
+            <if test="useType != null and useType != ''">
+                AND l.useType = #{useType}
+            </if>
+            <if test="state != null and state != ''">
+                <choose>
+                    <when test="state == 1">
+                        AND l.soilFieldBillboard IS NOT NULL
+                    </when>
+                    <otherwise>
+                        AND l.soilFieldBillboard IS NULL
+                    </otherwise>
+                </choose>
+            </if>
+        ORDER BY l.createTime
+    </select>
+
+    <select id="getCompanyID" parameterType="map" resultType="com.topsun.entity.Roules">
+        SELECT
+               *
+        FROM
+             org_roules
+        WHERE 1=1
+            <if test="authLeave == 1 and companyID != 1">
+                AND `headID` = #{companyID}
+            </if>
+            <if test="authLeave == 2">
+                AND `subID` = #{companyID}
+            </if>
+            <if test="authLeave == 3">
+                AND roulesID = #{companyID}
+            </if>
+            <if test="name != null and name != ''">
+                AND roulesName LIKE CONCAT('%',#{name},'%')
+            </if>
+    </select>
+</mapper>

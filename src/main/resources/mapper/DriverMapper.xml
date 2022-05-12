@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.DriverMapper">
+	
+	<resultMap type="driverInfo" id="drivers">
+	<id property="driverID" column="driverID" />
+	<result property="driverName" column="driverName"/>
+	<result property="driverSex" column="driverSex"/>
+	<result property="driverAge" column="driverAge"/>
+	<result property="phoneNum" column="phoneNum"/>
+	<result property="licenseNO" column="licenseNO"/>
+	<result property="icCardNO" column="icCardNO"/>
+	<result property="createTime" column="createTime"/>
+	<result property="delStatus" column="delStatus"/>
+	<result property="qulificationNO" column="qulificationNO"/>
+	<result property="certifAuthority" column="certifAuthority"/>
+	<result property="validityDate" column="validityDate"/>
+	<result property="subID" column="subID"/>
+	<result property="headID" column="headID"/>
+	<result property="status" column="status"/>
+		<association property="subCompany" javaType="subCompany">
+		<id property="subID" column="subID"/>
+		<result property="subName" column="subName"/>
+		<result property="subCode" column="subCode"/>
+		<result property="headID" column="headID"/>
+		<result property="person" column="sub_person"/>
+		<result property="phoneNum" column="sub_phoneNum"/>
+		<result property="subAddress" column="subAddress"/>
+		<result property="createTime" column="sub_createTime"/>
+		<result property="remark" column="sub_remark"/>
+		<result property="delStatus" column="sub_delStatus"/>
+		</association>
+		
+		<association property="busInfo" javaType="busInfo">
+			<id property="busID" column="busID"/>
+			<result property="plateNO" column="plateNO"/>
+		</association>
+		
+		<association property="headCompany" javaType="headCompany">
+			<id property="headID" column="headID"/>
+			<result property="headName" column="headName"/>
+			<result property="headCode" column="headCode"/>
+			<result property="headAddress" column="headAddress"/>
+			<result property="person" column="head_person"/>
+			<result property="phoneNum" column="head_phoneNum"/>
+			<result property="createTime" column="head_createTime"/>
+			<result property="remark" column="head_remark"/>
+			<result property="delStatus" column="head_delStatus"/>
+		</association>
+		
+	</resultMap>
+	
+	
+	
+	<select id="getDriver" parameterType="hashmap" resultMap="drivers">
+		SELECT 
+		di.driverID, 
+		di.driverName, 
+		di.driverSex, 
+		di.driverAge, 
+		di.phoneNum, 
+		di.licenseNO, 
+		di.icCardNO,
+		DATE_FORMAT(di.createTime,'%Y-%m-%d %H:%i:%S') AS createTime, 
+		di.qulificationNO, 
+		di.certifAuthority, 
+		di.validityDate, 
+		di.subID,
+		di.headID ,
+		os.subName,
+		os.subCode,
+		os.headID,
+		os.person as sub_person,
+		os.phoneNum as sub_phoneNum,
+		os.subAddress,
+		DATE_FORMAT(os.createTime, '%Y-%m-%d %H:%i:%s') as sub_createTime,
+		os.remark as sub_remark,
+		os.delStatus as sub_delStatus,
+		oh.headID,
+		oh.headName,
+		oh.headCode,
+		oh.headAddress,
+		oh.person as head_person,
+		oh.phoneNum as head_phoneNum,
+		DATE_FORMAT(oh.createTime, '%Y-%m-%d %H:%i:%s') as head_createTime,
+		oh.remark as head_remark,
+		oh.delStatus as head_delStatus,
+		bi.busID,
+		IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO,
+		if(bi.busID IS NOT NULL,1,2) as status
+		
+		FROM driverInfo di
+		left join busInfo bi on di.driverID = bi.driverID
+		,org_headCompany oh, org_subCompany os 
+		<where>
+			di.delStatus = 0
+			AND oh.headID = os.headID
+			AND di.subID = os.subID
+			<if test="status == 1">
+				AND bi.busID IS NOT NULL
+			</if>
+			<if test="status == 2">
+				AND bi.busID IS NULL
+			</if>
+			<if test="driver.driverID != null">
+				AND di.driverID = #{driver.driverID}
+			</if>
+			<if test="driver.driverName != null and driver.driverName != ''">
+				AND di.driverName LIKE CONCAT('%',#{driver.driverName},'%')
+			</if>
+			<if test="driver.driverSex != null ">
+				AND di.driverSex = #{driver.driverSex}
+			</if>
+			<if test="driver.driverAge != null ">
+				AND di.driverAge = #{driver.driverAge}
+			</if>
+			<if test="driver.phoneNum != null and driver.phoneNum != ''">
+				AND di.phoneNum = #{driver.phoneNum}
+			</if>
+			<if test="driver.licenseNO != null and driver.licenseNO != ''">
+				AND di.licenseNO LIKE CONCAT('%',#{driver.licenseNO},'%')
+			</if>
+			<if test="driver.icCardNO != null and driver.icCardNO != ''">
+				AND di.icCardNO LIKE CONCAT('%',#{driver.icCardNO},'%')
+			</if>
+			<if test="driver.qulificationNO != null and driver.qulificationNO != ''">
+				AND di.qulificationNO = #{driver.qulificationNO}
+			</if>
+			<if test="driver.certifAuthority != null and driver.certifAuthority != ''">
+				AND di.certifAuthority = #{driver.certifAuthority}
+			</if>
+			<if test="driver.validityDate != null and driver.validityDate != ''">
+				AND di.validityDate = #{driver.validityDate}
+			</if>
+			<if test="authLeave == 1">
+				and di.headID = #{companyID}
+			</if>
+			<if test="authLeave == 2">
+				and di.subID = #{companyID}
+			</if>
+			<if test="driver.headID != null and driver.headID != 1">
+				and di.headID = #{driver.headID}
+			</if>
+			<if test="driver.subID != null " >
+				and di.subID = #{driver.subID}
+			</if>
+		</where> 
+		ORDER BY di.driverID DESC
+	</select>
+	
+	
+	
+</mapper>

@@ -1,0 +1,687 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.AlarmMapper">
+	<resultMap type="com.topsun.entity.AlarmInfo" id="alarmInfo">
+		<id property="id" jdbcType="INTEGER" column="id"/>
+		<result property="busID" jdbcType="INTEGER" column="busID"/>
+		<result property="driverID" jdbcType="INTEGER" column="driverID"/>
+		<result property="perID" jdbcType="INTEGER" column="perID"/>
+		<result property="alarmTime" jdbcType="VARCHAR" column="alarmTime"/>
+		<result property="alarmID" jdbcType="INTEGER" column="alarmID"/>
+		<result property="alarmState" jdbcType="INTEGER" column="alarmState"/>
+		<result property="alarmLevel" jdbcType="VARCHAR" column="alarmLevel"/>
+		<result property="latitude" jdbcType="VARCHAR" column="latitude"/>
+		<result property="longitude" jdbcType="VARCHAR" column="longitude"/>
+		<result property="speed" jdbcType="INTEGER" column="speed"/>
+		<result property="busState" jdbcType="INTEGER" column="busState"/>
+		<result property="alarmSign" jdbcType="VARCHAR" column="alarmSign"/>
+		<result property="handleState" jdbcType="INTEGER" column="handleState"/>
+		<result property="alarmType" jdbcType="VARCHAR" column="alarmType"/>
+		<result property="file_format" jdbcType="VARCHAR" column="file_format"/>
+		<result property="attachment_type" jdbcType="VARCHAR" column="attachment_type"/>
+		<result property="channelID" jdbcType="INTEGER" column="channelID"/>
+		<result property="fileURL" jdbcType="VARCHAR" column="fileURL"/>
+		<result property="source" jdbcType="INTEGER" column="source"/>
+		<association property="busInfo" javaType="com.topsun.entity.BusInfo">
+			<id property="busID" jdbcType="INTEGER" column="busID"/>
+			<result property="plateNO" jdbcType="VARCHAR" column="plateNO"/>
+			<result property="plateColor" jdbcType="INTEGER" column="plateColor"/>
+			<result property="crateTime" jdbcType="VARCHAR" column="crateTime"/>
+			<result property="startTime" jdbcType="VARCHAR" column="startTime"/>
+			<result property="busType" jdbcType="INTEGER" column="busType"/>
+			<association property="driverInfo" javaType="com.topsun.entity.DriverInfo">
+				<id property="driverID" jdbcType="INTEGER" column="driverID"/>
+				<result property="driverName" jdbcType="VARCHAR" column="driverName"/>
+				<result property="qulificationNO" jdbcType="VARCHAR" column="qulificationNO"/>
+				<result property="phoneNum" jdbcType="VARCHAR" column="phoneNum"/>
+			</association>
+			<association property="company" javaType="com.topsun.entity.Company">
+				<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+				<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+			</association>	
+			<association property="terminalInfo" javaType="com.topsun.entity.TerminalInfo">
+				<id property="termID" jdbcType="INTEGER" column="termID"/>
+				<result property="simCard" jdbcType="VARCHAR" column="simCard"/>
+			</association>	
+		</association>
+	</resultMap>
+
+	
+	
+	<select id="getAlarmInfoInTack" parameterType="map" resultType="alarmInfoInTack">
+		SELECT 
+		a.perID,
+		date_format(a.time,'%Y-%m-%d %H:%i:%s') AS time,
+		a.x64,
+		a.x65,
+		a.x66,
+		a.x67,
+		a.speed
+		FROM
+		${tableName} a
+		<where>
+		<if test="busID != null and busID != ''">
+			AND a.busID = #{busID}
+		</if>
+		<if test="gpsTime != null and gpsTime != ''">
+			AND a.serverTime = #{gpsTime}
+		</if>
+		</where>
+		
+	</select>
+	<select id="listBusAlarmCount" parameterType="map" resultType="java.lang.Integer">
+		SELECT COUNT(1) FROM
+		(SELECT
+		a.Id
+		FROM
+		  alarm_topsun.`${map.tableName}` a 
+		  LEFT JOIN busInfo b 
+		    ON a.`busID` = b.`busID` 
+		  LEFT JOIN terminalInfo t 
+		    ON b.`terminalID` = t.`termID` 
+		  LEFT JOIN driverInfo d 
+		    ON a.`driverID` = d.`driverID` 
+		  LEFT JOIN org_roules r 
+		    ON b.`roulesID` = r.`roulesID` 
+		<where>
+		1=1
+		<if test="map.authLeave != null and map.authLeave == 1 and map.companyID != 1">
+	  		AND r.`headID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 2">
+	  		AND r.`subID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 3">
+	  		AND b.roulesID = #{map.companyID}
+	  	</if>
+		<if test="map.busID != null and map.busID != ''">
+			AND a.busID IN 
+			<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+		</if>
+		<if test="map.driverID != null and map.driverID != ''">
+			AND d.driverName LIKE CONCAT('%',#{map.driverID},'%') 
+		</if>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			AND a.time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.alarmLevel != null and map.alarmLevel != ''">
+			AND a.alarmLevel = #{map.alarmLevel}
+		</if>
+		<if test="map.handleState != null and map.handleState != ''">
+			AND a.handleState = #{map.handleState}
+		</if>
+		<if test="(map.list != null and map.list.size>0) or (map.x64 != null and map.x64.size>0) or (map.x65 != null and map.x65.size>0)
+			or (map.x66 != null and map.x66.size>0) or (map.x67 != null and map.x67.size>0)">
+			AND(<trim prefixOverrides="AND|OR">
+			<if test="map.list != null and map.list.size>0">
+				or
+				<foreach collection="map.list" index="index" item="item" separator="or">
+			       ${item} = 1
+			    </foreach>
+			</if>
+			<if test="map.x64 != null and map.x64.size > 0">
+				or
+				<foreach collection="map.x64" index="index" item="item" separator="or">
+			       a.x64 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x65 != null and map.x65.size > 0">
+				or
+				<foreach collection="map.x65" index="index" item="item" separator="or">
+			       a.x65 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x66 != null and map.x66.size > 0">
+				or
+				<foreach collection="map.x66" index="index" item="item" separator="or">
+			       a.x66 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x67 != null and map.x67.size > 0">
+				or
+				<foreach collection="map.x67" index="index" item="item" separator="or">
+			       a.x67 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			</trim>)
+		</if> 
+		</where>
+		GROUP BY concat( a.busID, a.time, a.perID)) q
+	</select>
+	<select id="listBusAlarm" parameterType="map" resultMap="alarmInfo">
+		SELECT 
+		  CASE
+		    WHEN a.alarm_1=1  
+		    THEN '超速报警 ' 
+		    WHEN a.alarm_4=1 
+		    THEN 'GNSS模块发生故障' 
+		    WHEN a.alarm_5=1
+		    THEN 'GNSS天线未接或被剪断' 
+		    WHEN a.alarm_6=1 
+		    THEN 'GNSS天线短路' 
+		    WHEN a.alarm_7=1
+		    THEN '终端主电源欠压' 
+		    WHEN a.alarm_8=1 
+		    THEN '终端主电源掉电' 
+		    WHEN a.alarm_9=1 
+		    THEN '终端LCD或显示器故障' 
+		    WHEN a.alarm_11=1 
+		    THEN '摄像头故障' 
+		    WHEN a.alarm_18=1 
+		    THEN '当天累计驾驶超时' 
+		    WHEN a.x64 LIKE '1%'
+		    THEN '前向碰撞报警' 
+		    WHEN a.x64 LIKE '2%' 
+		    THEN '车道偏离报警' 
+		    WHEN a.x64 LIKE '3%'
+		    THEN '车距过近报警' 
+		    WHEN a.x64 LIKE '4%' 
+		    THEN '行人碰撞报警' 
+		    WHEN a.x64 LIKE '5%' 
+		    THEN '频繁变道报警' 
+		    WHEN a.x64 LIKE '6%'
+		    THEN '道路标识超限报警' 
+		    WHEN a.x64 LIKE '7%'
+		    THEN '障碍物报警' 
+		    WHEN a.x65 LIKE '1%' 
+		    THEN '疲劳驾驶'
+		    WHEN a.x65 LIKE '2%'
+		    THEN '接打电话'
+		    WHEN a.x65 LIKE '3%'
+		    THEN '抽烟'
+		    WHEN a.x65 LIKE '4%'
+		    THEN '分神驾驶'
+		    WHEN a.x65 LIKE '5%'
+		    THEN '驾驶员异常'
+		    WHEN a.x65 LIKE '6%'
+		    THEN '打哈欠'
+		   	WHEN a.x65 LIKE '7%'
+		    THEN '离岗'
+		    WHEN a.x65 LIKE '11%'
+		    THEN '驾驶员变更' 
+		    WHEN a.x67 LIKE '1%'
+		    THEN '后方接近' 
+		    WHEN a.x67 LIKE '2%'
+		    THEN '左侧后方接近' 
+		    WHEN a.x67 LIKE '3%'
+		    THEN '右侧后方接近' 
+		  END AS alarmType,
+		  CASE
+		    a.alarmLevel 
+		    WHEN 1 
+		    THEN '一级' 
+		    WHEN 2 
+		    THEN '二级' 
+		    WHEN 3
+		    THEN '三级'
+		  END AS alarmLevel,
+		  a.driverID,
+		  a.perID,
+		  a.alarmID,
+		  a.busID,
+		  a.alarmState,
+		  a.latitude,
+		  a.longitude,
+		  a.speed,
+		  a.busState,
+		  a.alarmSign,
+		  a.handleState,
+		  date_format(a.time,'%Y-%m-%d %H:%i:%s') AS alarmTime,
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		  r.`roulesID` AS companyID,
+		  r.`roulesName` AS companyName,
+		  d.`driverName`,
+		  d.`phoneNum`,
+		  d.`qulificationNO`,
+		  t.`simCard`,
+		  a.file_format,
+		  a.attachment_type,
+		  a.channelID,
+		  a.fileURL,
+		  a.source
+		FROM
+		  alarm_topsun.`${map.tableName}` a 
+		  LEFT JOIN busInfo b 
+		    ON a.`busID` = b.`busID` 
+		  LEFT JOIN terminalInfo t 
+		    ON b.`terminalID` = t.`termID` 
+		  LEFT JOIN driverInfo d 
+		    ON a.`driverID` = d.`driverID` 
+		  LEFT JOIN org_roules r 
+		    ON b.`roulesID` = r.`roulesID` 
+		<where>
+		1=1
+		<if test="map.authLeave != null and map.authLeave == 1 and map.companyID != 1">
+	  		AND r.`headID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 2">
+	  		AND r.`subID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 3">
+	  		AND b.roulesID = #{map.companyID}
+	  	</if>
+				<if test="(map.busID != null and map.busID != '') or (map.roulesID != null and map.roulesID != '') ">
+			AND (
+				<trim prefixOverrides="AND|OR">
+					<if test="map.busID != null and map.busID != ''">
+						OR a.busID IN 
+						<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+					      #{item}
+					    </foreach>
+					</if>
+					<if test="map.roulesID != null and map.roulesID != ''">
+						OR b.roulesID IN 
+						<foreach collection="map.roulesID" open="(" close=")" separator="," index="index" item="item">
+					      #{item}
+					    </foreach>
+					</if>
+				</trim>
+			)
+		</if>
+		<if test="map.driverID != null and map.driverID != ''">
+			AND d.driverName LIKE CONCAT('%',#{map.driverID},'%') 
+		</if>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			AND a.time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.alarmLevel != null and map.alarmLevel != ''">
+			AND a.alarmLevel = #{map.alarmLevel}
+		</if>
+		<if test="map.handleState != null and map.handleState != ''">
+			AND a.handleState = #{map.handleState}
+		</if>
+		<if test="(map.list != null and map.list.size>0) or (map.x64 != null and map.x64.size>0) or (map.x65 != null and map.x65.size>0)
+			or (map.x66 != null and map.x66.size>0) or (map.x67 != null and map.x67.size>0)">
+			AND(<trim prefixOverrides="AND|OR">
+			<if test="map.list != null and map.list.size>0">
+				or
+				<foreach collection="map.list" index="index" item="item" separator="or">
+			       ${item} = 1
+			    </foreach>
+			</if>
+			<if test="map.x64 != null and map.x64.size > 0">
+				or
+				<foreach collection="map.x64" index="index" item="item" separator="or">
+			       a.x64 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x65 != null and map.x65.size > 0">
+				or
+				<foreach collection="map.x65" index="index" item="item" separator="or">
+			       a.x65 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x66 != null and map.x66.size > 0">
+				or
+				<foreach collection="map.x66" index="index" item="item" separator="or">
+			       a.x66 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x67 != null and map.x67.size > 0">
+				or
+				<foreach collection="map.x67" index="index" item="item" separator="or">
+			       a.x67 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			</trim>)
+		</if> 
+		</where>
+		GROUP BY concat( a.busID, a.time, a.perID)
+		ORDER BY a.time DESC
+		<if test="map.page != null and map.limit != null">
+		LIMIT #{map.page},#{map.limit}
+		</if>
+	</select>
+	
+	<select id="listBusAlarmModel" parameterType="map" resultType="com.topsun.model.AlarmModel">
+		SELECT 
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		  r.`roulesID` AS companyID,
+		  r.`roulesName` AS companyName,
+		  d.`driverName`,
+		  d.`phoneNum`,
+		  d.`qulificationNO`,
+		  t.`simCard`,
+		  DATE_FORMAT(a.`time`, '%Y-%m-%d %H:%i:%s') AS alarmTime,
+		  CASE
+		    WHEN a.alarm_1=1  
+		    THEN '超速报警 ' 
+		    WHEN a.alarm_4=1 
+		    THEN 'GNSS模块发生故障' 
+		    WHEN a.alarm_5=1
+		    THEN 'GNSS天线未接或被剪断' 
+		    WHEN a.alarm_6=1 
+		    THEN 'GNSS天线短路' 
+		    WHEN a.alarm_7=1
+		    THEN '终端主电源欠压' 
+		    WHEN a.alarm_8=1 
+		    THEN '终端主电源掉电' 
+		    WHEN a.alarm_9=1 
+		    THEN '终端LCD或显示器故障' 
+		    WHEN a.alarm_11=1 
+		    THEN '摄像头故障' 
+		    WHEN a.alarm_18=1 
+		    THEN '当天累计驾驶超时' 
+		    WHEN a.x64 LIKE '1%'
+		    THEN '前向碰撞报警' 
+		    WHEN a.x64 LIKE '2%' 
+		    THEN '车道偏离报警' 
+		    WHEN a.x64 LIKE '3%'
+		    THEN '车距过近报警' 
+		    WHEN a.x64 LIKE '4%' 
+		    THEN '行人碰撞报警' 
+		    WHEN a.x64 LIKE '5%' 
+		    THEN '频繁变道报警' 
+		    WHEN a.x64 LIKE '6%'
+		    THEN '道路标识超限报警' 
+		    WHEN a.x64 LIKE '7%'
+		    THEN '障碍物报警' 
+		    WHEN a.x65 LIKE '1%' 
+		    THEN '疲劳驾驶报警' 
+		    WHEN a.x65 LIKE '2%'
+		    THEN '接打电话报警'
+		    WHEN a.x65 LIKE '3%'
+		    THEN '抽烟报警'
+		    WHEN a.x65 LIKE '4%'
+		    THEN '分神驾驶报警'
+		    WHEN a.x65 LIKE '5%'
+		    THEN '驾驶员异常报警'
+		    WHEN a.x65 LIKE '6%'
+		    THEN '打哈欠'
+		   	WHEN a.x65 LIKE '7%'
+		    THEN '离岗'
+		    WHEN a.x65 LIKE '11%'
+		    THEN '驾驶员变更' 
+		    WHEN a.x67 LIKE '1%'
+		    THEN '后方接近报警' 
+		    WHEN a.x67 LIKE '2%'
+		    THEN '左侧后方接近报警' 
+		    WHEN a.x67 LIKE '3%'
+		    THEN '右侧后方接近报警' 
+		  END AS alarmType,
+		  CASE
+		    a.alarmLevel 
+		    WHEN 1 
+		    THEN '一级' 
+		    WHEN 2 
+		    THEN '二级' 
+		    WHEN 3
+		    THEN '三级'
+		  END AS alarmLevel,
+		  a.latitude,
+		  a.longitude,
+		  a.speed,
+		  CASE
+		    a.handleState 
+		    WHEN 0 
+		    THEN '未处理' 
+		    WHEN 1 
+		    THEN '已处理'
+		    WHEN 2
+		    THEN '无效' 
+		  END AS handleState 
+		FROM
+		  alarm_topsun.`${map.tableName}` a  
+		  LEFT JOIN busInfo b 
+		    ON a.`busID` = b.`busID` 
+		  LEFT JOIN terminalInfo t 
+		    ON b.`terminalID` = t.`termID` 
+		  LEFT JOIN driverInfo d 
+		    ON a.`driverID` = d.`driverID` 
+		  LEFT JOIN org_roules r 
+		    ON b.`roulesID` = r.`roulesID` 
+				<where>
+		1=1
+		<if test="map.authLeave != null and map.authLeave == 1 and map.companyID != 1">
+	  		AND r.`headID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 2">
+	  		AND r.`subID` = #{map.companyID}
+	  	</if>
+	  	<if test="map.authLeave != null and map.authLeave == 3">
+	  		AND b.roulesID = #{map.companyID}
+	  	</if>
+		<if test="map.busID != null and map.busID != ''">
+			AND a.busID IN 
+			<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+		      #{item}
+		    </foreach>
+		</if>
+		<if test="map.driverID != null and map.driverID != ''">
+			AND d.driverName LIKE CONCAT('%',#{map.driverID},'%') 
+		</if>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			AND a.time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.alarmLevel != null and map.alarmLevel != ''">
+			AND a.alarmLevel = #{map.alarmLevel}
+		</if>
+		<if test="map.handleState != null and map.handleState != ''">
+			AND a.handleState = #{map.handleState}
+		</if>
+		<if test="(map.list != null and map.list.size>0) or (map.x64 != null and map.x64.size>0) or (map.x65 != null and map.x65.size>0)
+			or (map.x66 != null and map.x66.size>0) or (map.x67 != null and map.x67.size>0)">
+			AND(<trim prefixOverrides="AND|OR">
+			<if test="map.list != null and map.list.size>0">
+				or
+				<foreach collection="map.list" index="index" item="item" separator="or">
+			       ${item} = 1
+			    </foreach>
+			</if>
+			<if test="map.x64 != null and map.x64.size > 0">
+				or
+				<foreach collection="map.x64" index="index" item="item" separator="or">
+			       a.x64 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x65 != null and map.x65.size > 0">
+				or
+				<foreach collection="map.x65" index="index" item="item" separator="or">
+			       a.x65 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x66 != null and map.x66.size > 0">
+				or
+				<foreach collection="map.x66" index="index" item="item" separator="or">
+			       a.x66 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			<if test="map.x67 != null and map.x67.size > 0">
+				or
+				<foreach collection="map.x67" index="index" item="item" separator="or">
+			       a.x67 LIKE CONCAT(#{item},'%')
+			    </foreach>
+			</if>
+			</trim>)
+		</if> 
+		</where>
+		ORDER BY a.time DESC
+	</select>
+	
+	
+	
+	
+	<select id="listMediaInfo" parameterType="map" resultType="com.topsun.entity.MediaInfo">
+		SELECT 
+		  m.busID,
+		  m.file_format,
+		  m.attachment_type,
+		  m.channelID,
+		  m.fileURL,
+		  date_format(m.time,'%Y-%m-%d %H:%i:%s') AS fileTime,
+		  m.source,
+		  CONCAT(m.perID,m.alarmType) AS alarmType,
+		  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO 
+		FROM
+		  `${map.databaseName}`.`${map.tableName}` m
+		  LEFT JOIN busInfo b 
+    		ON m.`busID` = b.`busID`
+		WHERE 1 = 1 
+		<if test="map.busID != null and map.busID != ''">
+			AND m.busID = #{map.busID}
+		</if>
+		<if test="map.alarmTime != null and map.alarmTime != ''">
+			AND m.time = #{map.alarmTime}
+		</if>
+		<if test="map.channelID != null and map.channelID != ''">
+			AND m.channelID = #{map.channelID}
+		</if>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			AND m.time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.file_format != null and map.file_format != ''">
+			AND (m.file_format = #{map.file_format}
+			<if test="map.file_format == 2 or map.file_format == 1">
+				OR m.file_format = 4
+			</if>)
+		</if>
+		<if test="map.attachment_type != null and map.attachment_type != ''">
+			AND m.attachment_type = #{map.attachment_type}
+		</if>
+		<if test="map.source != null and map.source != ''">
+			AND m.source = #{map.source}
+		</if>
+		<if test="map.gpsTime != null and map.gpsTime != ''">
+			AND m.serverTime = #{map.gpsTime}
+		</if>
+		<if test="map.file_format != 1 and map.attachment_type != 1 and map.attachment_type != 2">
+			UNION ALL
+			SELECT 
+			  m.bus_id AS busID,
+			  1 AS file_format,
+			  3 AS attachment_type,
+			  m.channelID,
+			  m.ftpUrl AS fileURL,
+			  date_format(m.fileTime,'%Y-%m-%d %H:%i:%s') AS fileTime,
+			  2 AS source,
+			  null AS alarmType,
+			  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO 
+			FROM
+			  `VIDEO_REMOTE_ZTC`.`37382` m
+			  LEFT JOIN busInfo b 
+	    		ON m.`bus_id` = b.`busID`
+			WHERE 1 = 1
+			AND m.fileTime BETWEEN #{map.startTime} AND #{map.endTime}
+			<if test="map.channelID != null and map.channelID != ''">
+				AND m.channelID = #{map.channelID}
+			</if>
+			<if test="map.busID != null and map.busID != ''">
+				AND m.bus_id = #{map.busID}
+			</if>
+		</if>
+	</select>
+	
+	<update id="updateAlarmHandle" parameterType="map">
+		UPDATE 
+		  `${map.databaseName}`.`${map.tableName}` a
+		SET
+		  a.handleState = #{map.handleState} 
+		  WHERE a.busID = #{map.busID}
+		  AND a.time = #{map.alarmTime}
+		  AND a.perID = #{map.perID}
+	</update>
+	
+	<select id="listAlarmCount" parameterType="map" resultType="com.topsun.entity.AlarmNum">
+		SELECT
+		
+			a.`busID`,
+		  IF(bi.`busNO` is null or bi.`busNO` = '',bi.`plateNO`,CONCAT(bi.`busNO`,'-', bi.`plateNO`)) AS plateNO, 	
+		
+		  COUNT(IF(a.x64 LIKE '1%', a.x64, NULL)) AS x641,
+		  COUNT(IF(a.x64 LIKE '2%', a.x64, NULL)) AS x642,
+		  COUNT(IF(a.x64 LIKE '3%', a.x64, NULL)) AS x643,
+		  COUNT(IF(a.x64 LIKE '4%', a.x64, NULL)) AS x644,
+		  COUNT(IF(a.x64 LIKE '5%', a.x64, NULL)) AS x645,
+		  COUNT(IF(a.x64 LIKE '6%', a.x64, NULL)) AS x646,
+		  COUNT(IF(a.x64 LIKE '7%', a.x64, NULL)) AS x647,
+		  COUNT(IF(a.x65 LIKE '1%', a.x65, NULL)) AS x651,
+		  COUNT(IF(a.x65 LIKE '2%', a.x65, NULL)) AS x652,
+		  COUNT(IF(a.x65 LIKE '3%', a.x65, NULL)) AS x653,
+		  COUNT(IF(a.x65 LIKE '4%', a.x65, NULL)) AS x654,
+		  COUNT(IF(a.x65 LIKE '5%', a.x65, NULL)) AS x655,
+		  COUNT(IF(a.x65 LIKE '6%', a.x65, NULL)) AS x656,
+		  COUNT(IF(a.x65 LIKE '7%', a.x65, NULL)) AS x657,
+		  COUNT(IF(a.x65 LIKE '11%', a.x65, NULL)) AS x6511,
+		  COUNT(IF(a.x67 LIKE '1%', a.x67, NULL)) AS x671,
+		  COUNT(IF(a.x67 LIKE '2%', a.x67, NULL)) AS x672,
+		  COUNT(IF(a.x67 LIKE '3%', a.x67, NULL)) AS x673
+		FROM
+		alarm_topsun.`${map.tableName}` a 
+		  JOIN busInfo bi 
+		    ON a.`busID` = bi.`busID` 
+		  JOIN org_roules r 
+		    ON bi.`roulesID` = r.`roulesID`
+		<where>
+			<if test="map.authLeave != null and map.authLeave != ''">
+				<if test="map.authLeave == 1">
+					AND r.headID = #{map.companyID}
+				</if>
+				<if test="map.authLeave == 2">
+					AND r.subID = #{map.companyID}
+				</if>
+			</if>
+			<!-- AND a.`handleState` = 0 -->
+		</where> 
+		<if test="map.optType == 1">
+			GROUP BY a.`busID`	
+		</if>
+	</select>
+	
+	
+	
+	
+	
+	<insert id="insertTextTemplate" parameterType="com.topsun.entity.TextTemplate">
+		INSERT INTO `text_template` (subID, headID, content) 
+		VALUES
+		  (#{subID}, #{headID}, #{content})
+	</insert>
+	<update id="updateTextTemplate" parameterType="com.topsun.entity.TextTemplate">
+		UPDATE `text_template` SET content = #{content} WHERE textID = #{textID}
+	</update>
+	
+	<select id="listTextTemplate" parameterType="map" resultType="com.topsun.entity.TextTemplate">
+		SELECT * FROM `text_template` 
+		<where>
+			<if test="subID != null and subID != ''">
+				AND subID = #{subID}
+			</if>
+			<if test="headID != null and headID != ''">
+				AND headID = #{headID}
+			</if>
+		</where>  
+	</select>
+	
+	<select id="tableIfExists" parameterType="map" resultType="Integer">
+		SELECT 
+		  COUNT(0) 
+		FROM
+		  information_schema.tables 
+		WHERE table_schema = #{databaseName}
+		  AND table_name = #{tableName}
+	</select>
+	
+	
+	<select id="getStatistics" parameterType="map" resultType="com.topsun.entity.AlarmStatistics">
+		SELECT
+			IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+			d.driverName,
+			COUNT(IF(SUBSTRING(BIN(top.state),-2,1) = 1 ,1,NULL))/COUNT(1) AS GPS,
+			COUNT(IF(top.x65 != 0 ,1,NULL))/COUNT(1) AS DSM,
+			COUNT(IF(top.x67 != 0 ,1,NULL))/COUNT(1) AS BSD,
+			COUNT(IF(SUBSTRING(BIN(top.alarm),5,1) = 1 ,1,NULL))/COUNT(1) AS MOVE,
+			b.busID
+		FROM
+			${tableName} top
+			LEFT JOIN driverInfo d ON d.driverID = top.driverID
+			LEFT JOIN busInfo b ON b.busID = top.busID
+			WHERE top.server_time BETWEEN #{startTime} AND #{endTime}
+	</select>
+	
+	
+	
+	
+</mapper>

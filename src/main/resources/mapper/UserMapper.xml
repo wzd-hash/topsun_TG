@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.UserMapper">
+	<!-- column:数据库字段 property:实体类字段  jdbcType:字段类型-->
+	<resultMap type="com.topsun.entity.User" id="userInfo">
+		<id property="userID" jdbcType="INTEGER" column="userID"/>
+		<result property="userName" jdbcType="VARCHAR" column="userName"/>
+		<result property="password" jdbcType="VARCHAR" column="password"/>
+		<result property="createUserID" jdbcType="INTEGER" column="createUserID"/>
+		<result property="createUserName" jdbcType="VARCHAR" column="createUserName"/>
+		<result property="headCompanyID" jdbcType="INTEGER" column="headCompanyID"/>
+		<result property="person" jdbcType="VARCHAR" column="person"/>
+		<result property="phoneNum" jdbcType="VARCHAR" column="phoneNum"/>
+		<result property="remark" jdbcType="VARCHAR" column="sign"/>
+		<result property="delStatus" jdbcType="INTEGER" column="delStatus"/>
+		<result property="contactPhone" jdbcType="VARCHAR" column="contactPhone"/>
+		<association property="roles" javaType="com.topsun.entity.Roles">
+			<id property="roleID" jdbcType="INTEGER" column="roleID"/>
+			<result property="roleName" jdbcType="VARCHAR" column="roleName"/>
+			<result property="authLeave" jdbcType="INTEGER" column="authLeave"/>
+			<result property="manRange" jdbcType="VARCHAR" column="manRange"/>
+			<result property="createTime" jdbcType="VARCHAR" column="createTime"/>
+			<result property="delStatus" jdbcType="INTEGER" column="delStatus"/>
+			<association property="company" javaType="com.topsun.entity.Company">
+				<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+				<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+				<result property="companyCode" jdbcType="VARCHAR" column="companyCode"/>
+				<result property="person" jdbcType="VARCHAR" column="person"/>
+				<result property="phoneNum" jdbcType="VARCHAR" column="phoneNum"/>
+				<result property="companyAddress" jdbcType="VARCHAR" column="companyAddress"/>
+				<result property="createTime" jdbcType="VARCHAR" column="createTime"/>
+				<result property="remark" jdbcType="VARCHAR" column="remark"/>
+				<result property="delStatus" jdbcType="INTEGER" column="delStatus"/>
+				<result property="parentID" jdbcType="INTEGER" column="parentID"/>
+				<result property="grandParentID" jdbcType="INTEGER" column="grandParentID"/>
+				
+			</association>
+		</association>
+	</resultMap>
+
+	<resultMap type="com.topsun.entity.Roles" id="rolesInfo">
+		<id property="roleID" jdbcType="INTEGER" column="roleID"/>
+		<result property="roleName" jdbcType="VARCHAR" column="roleName"/>
+		<result property="authLeave" jdbcType="INTEGER" column="authLeave"/>
+		<result property="manRange" jdbcType="VARCHAR" column="manRange"/>
+		<result property="createTime" jdbcType="VARCHAR" column="createTime"/>
+		<result property="delStatus" jdbcType="INTEGER" column="delStatus"/>
+		<association property="company" javaType="com.topsun.entity.Company">
+			<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+			<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+			<result property="companyCode" jdbcType="VARCHAR" column="companyCode"/>
+			<result property="person" jdbcType="VARCHAR" column="person"/>
+			<result property="phoneNum" jdbcType="VARCHAR" column="phoneNum"/>
+			<result property="companyAddress" jdbcType="VARCHAR" column="companyAddress"/>
+			<result property="createTime" jdbcType="VARCHAR" column="createTime"/>
+			<result property="remark" jdbcType="VARCHAR" column="remark"/>
+			<result property="delStatus" jdbcType="INTEGER" column="delStatus"/>
+			<result property="parentID" jdbcType="INTEGER" column="parentID"/>
+			<result property="grandParentID" jdbcType="INTEGER" column="grandParentID"/>
+
+		</association>
+	</resultMap>
+	
+	
+	<select id="getUserByUserName" parameterType="map" resultMap="userInfo">
+		SELECT 
+		  u.*,
+		  r.authLeave,
+		  r.roleID,
+		  r.manRange
+		FROM
+		  users u,
+		  roles r 
+		WHERE u.`roleID` = r.`roleID` 
+		AND u.`userName` = #{map.userName}
+		AND u.`password` = #{map.password}
+		AND u.delStatus = 0
+	</select>
+	
+	
+	
+	<select id="listUsers" parameterType="map" resultMap="userInfo">
+		SELECT 
+	      u.*,
+		  us.`userName` AS createUserName,
+		  r.`authLeave`,
+		  r.`roleName`,
+		  r.`roleID`,
+		  r.manRange,
+		  CASE
+		    r.`authLeave`
+		    WHEN 0
+    		THEN h.remark  
+		    WHEN 1 
+		    THEN h.remark
+		    WHEN 2 
+		    THEN s.remark 
+		    END AS sign,
+		  CASE
+		    r.`authLeave`
+		    WHEN 0
+    		THEN h.headName  
+		    WHEN 1 
+		    THEN h.headName 
+		    WHEN 2 
+		    THEN s.subName 
+		    END AS companyName
+		FROM
+		  users u 
+		  LEFT JOIN users us 
+		    ON u.`createUserID` = us.`userID` 
+		  LEFT JOIN roles r 
+		    ON u.`roleID` = r.`roleID` 
+		  LEFT JOIN org_headCompany h 
+		    ON u.`headCompanyID` = h.`headID` 
+		  LEFT JOIN org_subCompany s 
+		    ON u.`companyID` = s.`subID` 
+		 WHERE 1=1 AND u.delStatus = 0
+		 <if test="map.authLeave == 1">
+		 	AND r.companyID = #{map.companyID}
+		 </if>
+		 <if test="map.authLeave == 2">
+		 	AND s.`subID` = #{map.companyID}
+		 	AND r.authLeave = 2
+		 </if>
+		<if test="map.authLeave == 3">
+			AND r.companyID = #{map.companyID}
+			AND r.authLeave = 3
+		</if>
+		 <if test="map.password != null and map.password != ''">
+		 	AND u.password = #{map.password}
+		 </if>
+		 <if test="map.userName != null and map.userName != ''">
+		 	AND u.userName = #{map.userName}
+		 </if>
+		 <if test="map.roleID != null and map.roleID != ''">
+		 	AND u.roleID = #{map.roleID}
+		 </if>
+		 <if test="map.userId != null and map.userId != ''">
+		 	AND u.userID = #{map.userId}
+		 </if>
+	</select>
+	
+	
+	<select id="listMenu" parameterType="String" resultType="com.topsun.entity.Menu">
+		SELECT 
+	    `menu_id`,
+		`menu_name`,
+		`menu_url`,
+		`menu_parentID`,
+		`menu_sortID`,
+		`menu_icon`,
+		`menu_type`,
+		`menu_status`
+	 FROM `menu` 
+	 WHERE `menu_id` IN
+	    <foreach collection="array" open="(" close=")" separator="," index="index" item="item">
+	      #{item}
+	    </foreach>
+    order by  menu_sortID
+	</select>
+
+	<select id="listRoles" parameterType="map" resultMap="rolesInfo">
+		SELECT
+		r.roleID,
+		r.roleName,
+		r.authLeave,
+		r.companyID,
+		r.manRange,
+		DATE_FORMAT(
+		r.createTime,
+		'%Y-%m-%d %H:%i:%s'
+		) AS createTime,
+		h.headName AS companyName
+		FROM
+		roles r,
+		org_headCompany h
+		WHERE r.`companyID` = h.`headID`
+		AND r.delStatus = 0
+<!--		<if test="map.authority != null and map.authority != ''">
+			AND r.authLeave = #{map.authority}
+		</if>-->
+<!--		<if test="map.authLeave == 1">
+			AND r.`companyID` = #{map.companyID}
+		</if>
+		<if test="map.authLeave == 2">
+			AND r.`companyID` = #{map.headCompanyID}
+		</if>-->
+		<if test="map.roleName != null and map.roleName != ''">
+			AND r.roleName = #{map.roleName}
+		</if>
+		<if test="map.roleID != null and map.roleID != ''">
+			AND r.roleID = #{map.roleID}
+		</if>
+		and r.authLeave = 3
+		and r.`companyID` = 24
+	</select>
+
+	<insert id="addRoles" parameterType="com.topsun.entity.Roles">
+		INSERT INTO `roles` (
+			roleName,
+			authLeave,
+			companyID,
+			createTime,
+			manRange
+		) VALUES(
+					#{roles.roleName},
+					3,
+					24,
+					NOW(),
+					#{roles.manRange}
+				)
+	</insert>
+
+	<update id="editRoles" parameterType="com.topsun.entity.Roles">
+		UPDATE `roles` SET
+		<if test="roleName != null and roleName != ''">
+			roleName = #{roleName},
+		</if>
+		<if test="manRange != null and manRange != ''">
+			manRange = #{manRange},
+		</if>
+		delStatus = #{delStatus}
+		WHERE roleID = #{roleID}
+	</update>
+
+	<insert id="addUsers" parameterType="map">
+		INSERT INTO `users` (
+			userName,
+			password,
+			roleID,
+			companyID,
+			headCompanyID,
+			createUserID,
+			phoneNum,
+			person,
+			createTime
+		) VALUES(
+					#{map.userName},
+					#{map.password},
+					#{map.roleID},
+					#{map.companyID},
+					#{map.headCompanyID},
+					#{map.userID},
+					#{map.phoneNum},
+					#{map.person},
+					NOW()
+				)
+	</insert>
+
+	<update id="editUsers" parameterType="map">
+		UPDATE
+		`users`
+		SET
+		<if test="map.userName != null and map.userName != ''">
+			userName = #{map.userName},
+		</if>
+		<if test="map.roleID != null and map.roleID != ''">
+			roleID = #{map.roleID},
+		</if>
+		<if test="map.companyID != null and map.companyID != ''">
+			companyID = #{map.companyID},
+		</if>
+		<if test="map.phoneNum != null and map.phoneNum != ''">
+			phoneNum = #{map.phoneNum},
+		</if>
+		<if test="map.person != null and map.person != ''">
+			person = #{map.person},
+		</if>
+		<if test="map.newPassword != null and map.newPassword != ''">
+			password = #{map.newPassword},
+		</if>
+		delStatus = #{map.delStatus}
+		WHERE userID = #{map.userID}
+	</update>
+	
+	
+</mapper>

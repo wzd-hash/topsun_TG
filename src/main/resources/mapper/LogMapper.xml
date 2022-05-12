@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+
+	<mapper namespace="com.topsun.mapper.LogMapper"> 
+		<insert id="insertLog" parameterType="com.topsun.entity.Log">
+			INSERT INTO logInfo(userID,optType,content,crateTime,loginIP,headID,subID)
+			VALUES(
+			#{userID},
+			#{optType},
+			#{content},
+			NOW(),
+			#{loginIP},
+			<if test="authLeave == 2">
+			#{headID},
+			#{subID}
+			</if>
+			<if test="authLeave != 2">
+			#{headID},
+			0
+			</if>
+
+			
+			)
+			
+		</insert>
+	
+	
+		<select id="getLogList" parameterType="hashmap" resultType="log">
+			SELECT li.userID,
+			li.optType,
+			li.content,
+			DATE_FORMAT(li.crateTime, '%Y-%m-%d %H:%i:%s') as crateTime,
+			li.loginIP,
+			li.headID,
+			li.subID,
+			u.userName,oh.headName,os.subName 
+			FROM logInfo li
+			left join org_subCompany os ON os.subID = li.subID
+			left join org_headCompany oh ON oh.headID = li.headID,
+			users u
+			
+			<where>
+				li.userID = u.userID
+				
+				<if test="authLeave == 2">
+					AND li.subID = #{companyID}
+					AND li.userID = #{userID}
+				</if>
+				<if test="authLeave == 1">
+					AND ((li.headID = #{companyID} and li.subID = 0 and li.userID = #{userID}) 
+					OR (li.subID != 0 and li.headID = #{companyID}))
+				</if>
+				<if test="subID != null and subID != ''">
+					AND li.subID = #{subID}
+				</if>
+				<if test="headID != null and headID != ''">
+					AND li.headID = #{headID}
+				</if>
+				<if test="time != null and time != ''">
+					AND date_format(li.crateTime,'%Y-%m-%d') = #{time}
+				</if>
+			</where>
+			ORDER BY crateTime DESC
+		
+		</select>
+	</mapper>

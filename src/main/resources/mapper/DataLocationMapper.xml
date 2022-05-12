@@ -1,0 +1,894 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.DataLocationMapper">
+	<resultMap type="com.topsun.entity.DataLocation" id="dataLocation">
+		<result property="busID" jdbcType="INTEGER" column="busId"/>
+		<result property="driverID" jdbcType="INTEGER" column="driverID"/>
+		<result property="server_time" jdbcType="VARCHAR" column="server_time"/>
+		<result property="gps_time" jdbcType="VARCHAR" column="gps_time"/>
+		<result property="alarm" jdbcType="VARCHAR" column="alarm"/>
+		<result property="state" jdbcType="VARCHAR" column="state"/>
+		<result property="latitude" jdbcType="VARCHAR" column="latitude"/>
+		<result property="longitude" jdbcType="VARCHAR" column="longitude"/>
+		<result property="speed" jdbcType="DOUBLE" column="speed"/>
+		<result property="direction" jdbcType="INTEGER" column="direction"/>
+		<result property="x01" jdbcType="DOUBLE" column="x01"/>
+		<result property="x02" jdbcType="DOUBLE" column="x02"/>
+		<result property="x03" jdbcType="INTEGER" column="x03"/>
+		<result property="x04" jdbcType="INTEGER" column="x04"/>
+		<result property="x64" jdbcType="VARCHAR" column="x64"/>
+		<result property="x65" jdbcType="VARCHAR" column="x65"/>
+		<result property="x66" jdbcType="VARCHAR" column="x66"/>
+		<result property="x67" jdbcType="VARCHAR" column="x67"/>
+		<result property="busStatus" jdbcType="VARCHAR" column="busStatus"/>
+		<result property="leadTime" jdbcType="VARCHAR" column="leadTime"/>
+		<result property="serial" jdbcType="INTEGER" column="serial"/>
+		<result property="loginTime" jdbcType="VARCHAR" column="loginTime"/>
+		<result property="logoutTime" jdbcType="VARCHAR" column="logoutTime"/>
+		<result property="remark" jdbcType="INTEGER" column="remark"/>
+		<association property="busInfo" javaType="com.topsun.entity.BusInfo">
+			<id property="busID" jdbcType="INTEGER" column="busID"/>
+			<result property="plateNO" jdbcType="VARCHAR" column="plateNO"/>
+			<result property="plateColor" jdbcType="INTEGER" column="plateColor"/>
+			<result property="crateTime" jdbcType="VARCHAR" column="crateTime"/>
+			<result property="startTime" jdbcType="VARCHAR" column="startTime"/>
+			<result property="busType" jdbcType="INTEGER" column="busType"/>
+			<association property="driverInfo" javaType="com.topsun.entity.DriverInfo">
+				<id property="driverID" jdbcType="INTEGER" column="driverID"/>
+				<result property="driverName" jdbcType="VARCHAR" column="driverName"/>
+				<result property="qulificationNO" jdbcType="VARCHAR" column="qulificationNO"/>
+				<result property="licenseNO" jdbcType="VARCHAR" column="licenseNO"/>
+				<result property="phoneNum" jdbcType="VARCHAR" column="phoneNum"/>
+				<result property="icCardNO" jdbcType="VARCHAR" column="icCardNO"/>
+				<result property="certifAuthority" jdbcType="VARCHAR" column="certifAuthority"/>
+			</association>
+			<association property="company" javaType="com.topsun.entity.Company">
+				<id property="companyID" jdbcType="INTEGER" column="companyID"/>
+				<result property="companyName" jdbcType="VARCHAR" column="companyName"/>
+			</association>	
+			<association property="terminalInfo" javaType="com.topsun.entity.TerminalInfo">
+				<id property="termID" jdbcType="INTEGER" column="termID"/>
+				<result property="simCard" jdbcType="VARCHAR" column="simCard"/>
+				<result property="channelCount" jdbcType="INTEGER" column="channelCount"/>
+			</association>	
+		</association>
+	</resultMap>
+	
+	
+	<resultMap type="com.topsun.entity.BusCurrent" id="bus_current">
+		<id property="busID" jdbcType="INTEGER" column="busID" />
+		<result property="driverID" jdbcType="INTEGER" column="driverID"/>
+		<result property="server_time" jdbcType="VARCHAR" column="server_time"/>
+		<result property="state" jdbcType="INTEGER" column="state"/>
+		<result property="latitude" jdbcType="VARCHAR" column="latitude"/>
+		<result property="longitude" jdbcType="VARCHAR" column="longitude"/>
+		<result property="speed" jdbcType="DOUBLE" column="speed"/>
+		<result property="busStatus" jdbcType="VARCHAR" column="busStatus"/>
+		<result property="driverName" jdbcType="VARCHAR" column="driverName"/>
+		<result property="licenseNO" jdbcType="VARCHAR" column="licenseNO"/>
+		<result property="icCardNO" jdbcType="VARCHAR" column="icCardNO"/>
+		<result property="subName" jdbcType="VARCHAR" column="subName"/>
+		<result property="plateNO" jdbcType="VARCHAR" column="plateNO"/>
+		<collection property="list" ofType="com.topsun.entity.AlarmInfo">
+			<id property="id" column="id"/>
+			<result property="alarmType" jdbcType="VARCHAR" column="alarmType"/>
+			<result property="alarmLevel" jdbcType="VARCHAR" column="alarmLevel"/>
+			<result property="alarmTime" jdbcType="VARCHAR" column="alarmTime"/>
+		</collection>
+		
+	</resultMap>
+
+	<select id="listBusCurrentDataCount" parameterType="map" resultType="java.lang.Integer">
+		SELECT
+		count(1)
+		FROM
+		busInfo b
+		LEFT JOIN  `bus_current` c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN driverInfo d
+		ON c.`driverID` = d.`driverID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+			<if test="map.authLeave == 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+			AND (
+			<trim prefixOverrides="AND|OR">
+				<if test="map.busID != null and map.busID != ''">
+					OR c.busID IN
+					<foreach collection="map.busID" open="(" close=")" separator="," item="busID">
+						#{busID}
+					</foreach>
+				</if>
+				<if test="map.headID != null and map.headID != ''">
+					OR r.`headID` IN
+					<foreach collection="map.headID" open="(" close=")" separator="," item="headID">
+						#{headID}
+					</foreach>
+				</if>
+				<if test="map.subID != null and map.subID != ''">
+					OR r.subID IN
+					<foreach collection="map.subID" open="(" close=")" separator="," item="subID">
+						#{subID}
+					</foreach>
+				</if>
+				<if test="map.roulesID != null and map.roulesID != ''">
+					OR r.roulesID IN
+					<foreach collection="map.roulesID" open="(" close=")" separator="," item="roulesID">
+						#{roulesID}
+					</foreach>
+				</if>
+			</trim>)
+		</where>
+	</select>
+
+	<select id="listBusCurrentData" parameterType="map" resultType="busCurrentData">
+		SELECT
+		c.busID,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		b.busType,
+		DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s') AS gps_time,
+		DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+		BIN(c.state) AS state,
+		BIN(c.alarm) AS alarm,
+		c.latitude,
+		c.longitude,
+		c.altitude,
+		c.speed,
+		c.direction,
+		c.x01,
+		c.x02,
+		c.x03,
+		c.x64,
+		c.x65,
+		c.x66,
+		c.x67,
+		d.driverID,
+		d.driverName,
+		d.phoneNum,
+		d.licenseNO,
+		d.icCardNO,
+		d.qulificationNO,
+		d.certifAuthority,
+		r.`roulesID` AS companyID,
+		r.`roulesName` AS companyName,
+		CASE
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		THEN 2
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		THEN 5
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		THEN 3
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+		THEN 1
+		ELSE NULL
+		END AS busStatus,
+		TIMESTAMPDIFF(SECOND, c.server_time, NOW()) - 600 AS leadTime
+		FROM
+		busInfo b
+		LEFT JOIN  `bus_current` c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN driverInfo d
+		ON c.`driverID` = d.`driverID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+			<if test="map.authLeave == 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+			AND (
+			<trim prefixOverrides="AND|OR">
+				<if test="map.busID != null and map.busID != ''">
+					OR c.busID IN
+					<foreach collection="map.busID" open="(" close=")" separator="," item="busID">
+						#{busID}
+					</foreach>
+				</if>
+				<if test="map.headID != null and map.headID != ''">
+					OR r.`headID` IN
+					<foreach collection="map.headID" open="(" close=")" separator="," item="headID">
+						#{headID}
+					</foreach>
+				</if>
+				<if test="map.subID != null and map.subID != ''">
+					OR r.subID IN
+					<foreach collection="map.subID" open="(" close=")" separator="," item="subID">
+						#{subID}
+					</foreach>
+				</if>
+				<if test="map.roulesID != null and map.roulesID != ''">
+					OR r.roulesID IN
+					<foreach collection="map.roulesID" open="(" close=")" separator="," item="roulesID">
+						#{roulesID}
+					</foreach>
+				</if>
+			</trim>)
+		</where>
+		<if test="map.page != null and map.limit != null">
+			LIMIT #{map.page},#{map.limit}
+		</if>
+	</select>
+
+	<select id="listBusCurrentDataHome" parameterType="map" resultType="trackBackTest">
+		SELECT
+		b.busID,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		c.latitude,
+		c.longitude,
+		CASE
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		THEN 2
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		THEN 5
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		THEN 3
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+		THEN 1
+		ELSE NULL
+		END AS busStatus
+		FROM
+		busInfo b
+		LEFT JOIN `bus_current` c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+			<if test="map.authLeave == 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+			AND (
+			<trim prefixOverrides="AND|OR">
+				<if test="map.busID != null and map.busID != ''">
+					OR c.busID IN
+					<foreach collection="map.busID" open="(" close=")" separator="," item="busID">
+						#{busID}
+					</foreach>
+				</if>
+				<if test="map.headID != null and map.headID != ''">
+					OR r.`headID` IN
+					<foreach collection="map.headID" open="(" close=")" separator="," item="headID">
+						#{headID}
+					</foreach>
+				</if>
+				<if test="map.subID != null and map.subID != ''">
+					OR r.subID IN
+					<foreach collection="map.subID" open="(" close=")" separator="," item="subID">
+						#{subID}
+					</foreach>
+				</if>
+				<if test="map.roulesID != null and map.roulesID != ''">
+					OR r.roulesID IN
+					<foreach collection="map.roulesID" open="(" close=")" separator="," item="roulesID">
+						#{roulesID}
+					</foreach>
+				</if>
+			</trim>)
+		</where>
+	</select>
+	
+	<select id="listBusData" parameterType="map" resultMap="dataLocation">
+		SELECT
+		DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s') AS gps_time,
+		DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+		BIN(c.state) AS state,
+		BIN(c.alarm) AS alarm,
+		c.latitude,
+		c.longitude,
+		c.altitude,
+		c.speed,
+		c.direction,
+		c.x01,
+		c.x02,
+		c.x03,
+		c.x04,
+		c.x14,
+		c.x64,
+		c.x65,
+		c.x66,
+		c.x67,
+		c.serial,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		b.busType,
+		d.driverID,
+		d.driverName,
+		d.phoneNum,
+		d.licenseNO,
+		d.icCardNO,
+		d.qulificationNO,
+		d.certifAuthority,
+		r.`roulesID` AS companyID,
+		r.`roulesName` AS companyName,
+		CASE
+		<!-- WHEN (c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+      or c.server_time is null)
+      THEN 4  -->
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		THEN 2
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		THEN 5
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		THEN 3
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+		THEN 1
+		ELSE NULL
+		END AS busStatus,
+		TIMESTAMPDIFF(SECOND, c.server_time, NOW()) - 600 AS leadTime,
+		c.x01
+		FROM
+		busInfo b
+		LEFT JOIN  `bus_current` c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN driverInfo d
+		ON c.`driverID` = d.`driverID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+
+			<if test="map.authLeave == 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+
+			AND (
+			<trim prefixOverrides="AND|OR">
+				<if test="map.busID != null and map.busID != ''">
+					OR c.busID IN
+					<foreach collection="map.busID" open="(" close=")" separator="," item="busID">
+						#{busID}
+					</foreach>
+				</if>
+				<if test="map.headID != null and map.headID != ''">
+					OR r.`headID` IN
+					<foreach collection="map.headID" open="(" close=")" separator="," item="headID">
+						#{headID}
+					</foreach>
+				</if>
+				<if test="map.subID != null and map.subID != ''">
+					OR r.subID IN
+					<foreach collection="map.subID" open="(" close=")" separator="," item="subID">
+						#{subID}
+					</foreach>
+				</if>
+				<if test="map.roulesID != null and map.roulesID != ''">
+					OR r.roulesID IN
+					<foreach collection="map.roulesID" open="(" close=")" separator="," item="roulesID">
+						#{roulesID}
+					</foreach>
+				</if>
+			</trim>)
+		</where>
+		
+	</select>
+
+	<select id="listBusDataAll" parameterType="map" resultMap="dataLocation">
+		SELECT
+		DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s') AS gps_time,
+		DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+		BIN(c.state) AS state,
+		BIN(c.alarm) AS alarm,
+		c.*,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		b.busType,
+		d.*,
+		r.`roulesID` AS companyID,
+		r.`roulesName` AS companyName,
+		CASE
+		<!-- WHEN (c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+      or c.server_time is null)
+      THEN 4  -->
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		THEN 2
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0
+		THEN 5
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10
+		THEN 3
+		WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11
+		THEN 1
+		ELSE NULL
+		END AS busStatus,
+		TIMESTAMPDIFF(SECOND, c.server_time, NOW()) - 600 AS leadTime,
+		c.x01
+		FROM
+		busInfo b
+		LEFT JOIN  `bus_current` c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN driverInfo d
+		ON c.`driverID` = d.`driverID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+	</select>
+	
+	<select id="connectionByBusID" parameterType="map" resultMap="dataLocation">
+		SELECT 
+		  c.busID AS busId,
+		  date_format(MAX(c.`server_time`),'%Y-%m-%d %H:%i:%s') AS logoutTime,
+		  date_format(MIN(c.`server_time`),'%Y-%m-%d %H:%i:%s') AS loginTime,
+		  <!-- concat(left(date_format(c.`server_time`, '%Y-%m-%d %H:%i'),15),'0') as timekey -->
+		 floor(UNIX_TIMESTAMP(c.`server_time`)/1200) as timekey
+		FROM
+		  ${map.tableName} c 
+		WHERE 1=1
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			AND c.`server_time` BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		GROUP BY timekey
+	</select>
+	
+	<select id="outlineByBusID" parameterType="hashmap" resultType="com.topsun.entity.OfflineDisplacement">
+		SELECT
+			a.busID,
+			a.logoutTime AS startTime,
+			a.loginTime AS endTime,
+			b1.latitude AS beginLatitude,
+			b1.longitude AS beginLongitude,
+			b2.latitude AS endLatitude,
+			b2.longitude AS endLongitude
+		FROM
+			(SELECT
+				c.busID AS busId,
+				date_format( MAX( c.`server_time` ), '%Y-%m-%d %H:%i:%s' ) AS logoutTime,
+				date_format( MIN( c.`server_time` ), '%Y-%m-%d %H:%i:%s' ) AS loginTime,
+				floor( UNIX_TIMESTAMP( c.`server_time` )/ 1200 ) AS timekey
+			FROM
+				${tableName} c
+			WHERE
+				1 = 1
+				<if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+					AND c.`server_time` BETWEEN #{startTime} AND #{endTime}
+				</if>
+				GROUP BY timekey ) a,
+			${tableName} b1,
+			${tableName} b2
+		WHERE
+			a.logoutTime = b1.server_time
+		    AND a.loginTime = b2.server_time
+	</select>
+	
+	
+	<select id="listTrackBackTest" parameterType="map" resultType="trackBackTest">
+		SELECT 
+		ha.busID,
+		DATE_FORMAT(ha.gps_time,'%Y-%m-%d %H:%i:%s') AS gps_time,
+		ha.latitude,
+		ha.longitude,
+		ha.driverID,
+		ha.serial,
+		BIN(state) AS state,
+		BIN(alarm) AS alarm,
+		IF(ha.x64 + ha.x65 + ha.x66 + ha.x67 !=0,1,0 ) alarmStatus,
+		ha.speed,
+		ha.x01
+		FROM 
+		${table} ha
+		WHERE 
+		<!-- <if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+			DATE_FORMAT(ha.server_time,'%Y-%m-%d') BETWEEN DATE_FORMAT(#{startTime},'%Y-%m-%d') AND DATE_FORMAT(#{endTime},'%Y-%m-%d')
+		</if> -->
+		<if test="startTime != null and startTime != '' and endTime != null and endTime != ''">
+			ha.gps_time BETWEEN #{startTime} AND #{endTime}
+		</if>
+		LIMIT 0,10000
+	</select>
+	
+	
+	
+	<insert id="insertVideoTab" parameterType="map">
+		INSERT INTO VIDEO_REMOTE_ZTC.`37121`(
+		  bus_id,
+		  simCard,
+		  channelNO,
+		  send_info,
+		  send_time,
+		  optType
+		) 
+		VALUES(
+			#{map.busID},
+			#{map.simCard},
+			#{map.channelNO},
+			#{map.content},
+			NOW(),
+			#{map.optType}
+		)
+	</insert>
+	
+	
+	<select id="listBusDataHome" parameterType="map" resultType="trackBackTest">
+		SELECT
+		  b.busID,
+		  c.latitude,
+		  c.longitude,
+		   CASE
+		  	<!-- WHEN (c.server_time &lt;= DATE_SUB(now(), interval 2 day)
+			or c.server_time is null)
+		    THEN 4  -->
+		  	WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &gt; 600 or c.server_time is null
+		    THEN 2 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND SUBSTRING(BIN(c.state),-2,1) = 0 
+		    THEN 5 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 10 
+		    THEN 3 
+		    WHEN TIMESTAMPDIFF(SECOND, c.server_time, NOW()) &lt;= 600 AND RIGHT(BIN(c.state), 2) = 11 
+		    THEN 1
+		    ELSE NULL 
+		  END AS busStatus
+		FROM
+		  busInfo b 
+		  LEFT JOIN `bus_current` c 
+		    ON c.`busID` = b.`busID`  
+		  LEFT JOIN org_roules r 
+		    ON b.`roulesID` = r.`roulesID` 
+		WHERE 1=1
+		AND b.delStatus = 0
+		<if test="map.authLeave == 1">
+			AND r.`headID` = #{map.companyID}
+		</if>
+		<if test="map.authLeave == 2">
+			AND r.`subID` = #{map.companyID}
+		</if>
+	</select>
+	
+	<select id="getNewVideo" parameterType="map" resultType="string">
+		SELECT 
+		  m.fileURL
+		FROM
+		  `${databaseName}`.`${tableName}` m
+		  LEFT JOIN busInfo b 
+    		ON m.`busID` = b.`busID`
+    	  LEFT JOIN org_roules r 
+    	  	ON r.roulesID = b.roulesID
+		<where>
+			m.fileURL is not null
+		<if test="authLeave == 1">
+			AND r.`headID` = #{companyID}
+		</if>
+		<if test="authLeave == 2">
+			AND r.`subID` = #{companyID}
+		</if>
+		<if test="authLeave == 3">
+			AND r.`roulesID` = #{companyID}
+		</if>
+		</where>
+		ORDER BY time DESC
+		limit 1
+			
+	</select>
+	
+	
+	<insert id="">
+	
+	</insert>
+
+<!--	<select id="speedListBusData" parameterType="map" resultType="busSpeed">
+		SELECT
+		r.`roulesID` AS companyID,
+		r.`roulesName` AS companyName,
+		b.busID,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		min(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s')) AS startgps_time,
+		max(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s')) AS endgps_time,
+		TIMESTAMPDIFF(second,min(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s')),max(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s'))) as times,
+		DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+		BIN(c.alarm) AS alarm,
+		c.latitude,
+		c.longitude,
+		c.speed,
+		round(unix_timestamp(c.gps_time)/(10 * 60))  as time
+		FROM
+		busInfo b
+		LEFT JOIN  ${map.tableName} c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+			<if test="map.authLeave != null and map.authLeave == 1 and map.companyID != 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave != null and map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave != null and map.authLeave == 3">
+				AND b.roulesID = #{map.companyID}
+			</if>
+			and substring(bin(c.alarm),-2, 1) = 1
+			and c.gps_time BETWEEN #{map.startTime} AND #{map.endTime}
+
+		</where>
+		GROUP BY time-->
+	<!--	<if test="map.page != null and map.limit != null">
+			LIMIT #{map.page},#{map.limit}
+		</if>-->
+
+<!--	</select>-->
+
+
+	<select id="speedListBusData" parameterType="map" resultType="busSpeed">
+		SELECT
+		b.plateNO,
+		s.latitude,
+		s.longitude,
+		s.speed,
+		s.startgps_time,
+		s.endgps_time,
+		s.times,
+		b.busID,
+		id
+		FROM
+		busInfo b
+		INNER JOIN  terminalInfo t
+		ON b.terminalID = termID
+		INNER JOIN  bus_speed s
+		ON s.simCard = t.simCard
+	<where>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			 s.startgps_time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.time != null and map.time != ''">
+			AND s.startgps_time =  #{map.time}
+		</if>
+		<if test="map.busID != null and map.busID != ''">
+			and  b.busID IN
+			<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+				#{item}
+			</foreach>
+		</if>
+	</where>
+		<if test="map.page != null and map.limit != null">
+			LIMIT #{map.page},#{map.limit}
+		</if>
+	</select>
+
+	<select id="speedListCount" parameterType="map" resultType="speedTable">
+
+        SELECT
+		       id,
+		sum(s.times) as times,
+		UNIX_TIMESTAMP(MAX(s.`endgps_time`))-UNIX_TIMESTAMP(Min(s.`startgps_time`))/3600 AS startgps_time,
+		TRUNCATE(MAX(s.`endx01`) - Min(s.`startx01`), 2) AS endx01,
+		ROUND(sum(s.x01),2)  as x01,
+		ROUND(avg(s.speed),2) as speed,
+		concat(cast((times/(startgps_time))*100 as decimal(4,2)),'%') as timefen,
+		concat(cast((x01/(endx01))*100 as decimal(4,2)),'%') as x01fen,
+		b.plateNo
+		FROM
+		busInfo b
+		INNER JOIN  terminalInfo t
+		ON b.terminalID = termID
+		INNER JOIN  bus_speed s
+		ON s.simCard = t.simCard
+		<where>
+		<if test="map.busID != null and map.busID != ''">
+			b.busID IN
+			<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+				#{item}
+			</foreach>
+		</if>
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+		and s.endgps_time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		<if test="map.time != null and map.time != ''">
+			AND s.endgps_time =  #{map.time}
+		</if>
+			<if test="map.plateNO != null and map.plateNO != ''">
+				AND  IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) LIKE CONCAT('%',#{map.plateNO},'%')
+			</if>
+		</where>
+		GROUP BY b.plateNo
+	</select>
+
+	<select id="listBusMileage" parameterType="map" resultType="speedTable">
+		select
+		c.server_time as server_timec,
+		c.speed as speedc,
+-- 		concat(cast((c.gps_time/(a.gps_time))*100 as decimal(4,2)),'%') as gps_time,
+-- 		concat(cast((c.x01/(a.x01))*100 as decimal(4,2)),'%') as x01,
+		c.gps_time as gps_timec,
+	    c.x01 as x01c,
+		c.plateNO as plateNoc,
+		a.server_time as server_timea,
+		-- 		concat(cast((c.gps_time/(a.gps_time))*100 as decimal(4,2)),'%') as gps_time,
+		-- 		concat(cast((c.x01/(a.x01))*100 as decimal(4,2)),'%') as x01,
+		a.gps_time as gps_timea,
+		a.x01 as x01a,
+		a.plateNO as plateNoa
+		from
+		(SELECT
+		da.date_str AS server_time,
+		COALESCE(d.x01,0) AS x01,
+		COALESCE(d.gps_time,0) AS gps_time,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO
+		FROM
+		(SELECT
+		@cdate := DATE_ADD(@cdate, INTERVAL + 1 DAY) AS date_str
+		FROM
+		(SELECT
+		@cdate := DATE_ADD(#{map.startTime}, INTERVAL - 1 DAY)
+		FROM
+		`${map.year}`.`${map.tableName}`) tmp1
+		WHERE @cdate &lt; #{map.endTime}) da
+		LEFT JOIN
+		(SELECT
+		TRUNCATE(MAX(d.`x01`) - MIN(d.`x01`), 2) AS x01,
+		UNIX_TIMESTAMP(MAX(d.`gps_time`))-UNIX_TIMESTAMP(MIN(d.`gps_time`))/3600 AS gps_time,
+		DATE_FORMAT(d.`server_time`, '%Y-%m-%d') AS server_time,
+		 d.speed,
+		d.`busID`
+		FROM
+		`${map.year}`.`${map.tableName}` d
+		GROUP BY DATE_FORMAT(d.`server_time`, '%Y-%m-%d')) d
+		ON da.date_str = d.`server_time`,
+		busInfo b
+		WHERE 1=1
+		<if test="map.busID != null and map.busID != ''">
+			AND b.busID = #{map.busID}
+		</if>) a,
+		(SELECT
+		da.date_str AS server_time,
+		COALESCE(d.x01,0) AS x01,
+		COALESCE(d.gps_time,0) AS gps_time,
+		ROUND(avg(d.speed),2) as speed,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO
+		FROM
+		(SELECT
+		@cdate := DATE_ADD(@cdate, INTERVAL + 1 DAY) AS date_str
+		FROM
+		(SELECT
+		@cdate := DATE_ADD(#{map.startTime}, INTERVAL - 1 DAY)
+		FROM
+		`${map.year}`.`${map.tableName}`) tmp1
+		WHERE @cdate &lt; #{map.endTime}) da
+		LEFT JOIN
+		(SELECT
+		TRUNCATE(MAX(d.`x01`) - MIN(d.`x01`), 2) AS x01,
+		UNIX_TIMESTAMP(MAX(d.`gps_time`))-UNIX_TIMESTAMP(MIN(d.`gps_time`))/3600 AS gps_time,
+		DATE_FORMAT(d.`server_time`, '%Y-%m-%d') AS server_time,
+		d.speed,
+		d.`busID`
+		FROM
+		`${map.year}`.`${map.tableName}` d
+		where d.speed > 50
+		GROUP BY DATE_FORMAT(d.`server_time`, '%Y-%m-%d')) d
+		ON da.date_str = d.`server_time`,
+		busInfo b
+		WHERE 1=1
+		<if test="map.busID != null and map.busID != ''">
+			AND b.busID = #{map.busID}
+		</if>) c
+        group by  c.plateNO
+	</select>
+
+	<select id="speedListBusDataCount" parameterType="map" resultType="Integer">
+		SELECT COUNT(1)
+		FROM
+		busInfo b
+		INNER JOIN  terminalInfo t
+		ON b.terminalID = termID
+		INNER JOIN  bus_speed s
+		ON s.simCard = t.simCard
+		<where>
+			<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+				and s.startgps_time BETWEEN #{map.startTime} AND #{map.endTime}
+			</if>
+			<if test="map.busID != null and map.busID != ''">
+				and b.busID IN
+				<foreach collection="map.busID" open="(" close=")" separator="," index="index" item="item">
+					#{item}
+				</foreach>
+			</if>
+		</where>
+	</select>
+
+	<select id="speedListBusTable" parameterType="map" resultType="busSpeedTable">
+SELECT
+a.subName,
+a.num,
+c.cnum,
+b.bnum,
+concat(floor(b.times/60/60/24),'天',floor(b.times/60/60%24),'时',floor(b.times/60%60),'分',b.times%60, '秒') as times,
+round(b.x01,2) as x01
+FROM
+(SELECT
+		  s.`subName`,
+		  count(*) as num
+		FROM
+		busInfo b
+		  left JOIN  org_roules r ON ( r.roulesID = b.roulesID AND r.`delStatus` = 0)
+			left JOIN org_subCompany s on(s.subID = r.subID and s.delStatus = 0)
+			LEFT JOIN terminalInfo t on (t.termID = b.terminalID and t.delStatus = 0)
+		where
+			 b.delStatus = 0
+				AND s.`headID` = 24
+    GROUP BY s.`subID`,b.`roulesID`) a,
+
+ (SELECT
+        s.`subName`,
+		  count(*) as bnum,
+		sum(p.times) as times,
+		sum(p.x01) as x01
+		FROM
+		bus_speed p
+		LEFT JOIN terminalInfo t on (p.simCard= t.simCard and t.delStatus = 0)
+		LEFT JOIN  busInfo b on (b.terminalID = t.termID and t.delStatus = 0)
+			 left JOIN  org_roules r ON ( r.roulesID = b.roulesID AND r.`delStatus` = 0)
+			left JOIN org_subCompany s on(s.subID = r.subID and s.delStatus = 0)
+		where
+			 b.delStatus = 0
+				AND s.`headID` = 24
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+			and p.startgps_time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+   GROUP BY s.subName) b,
+(SELECT  s.`subName`,count(*) as cnum FROM
+				busInfo b
+		  left JOIN org_roules r ON ( r.roulesID = b.roulesID AND r.`delStatus` = 0)
+			left JOIN org_subCompany s on(s.subID = r.subID and s.delStatus = 0)
+			LEFT JOIN terminalInfo t on (t.termID = b.terminalID and t.delStatus = 0)
+			right JOIN (SELECT
+	DISTINCT
+	p.simCard
+ 		FROM
+ 		bus_speed p
+ 		right JOIN terminalInfo t on (p.simCard= t.simCard and t.delStatus = 0
+		<if test="map.startTime != null and map.startTime != '' and map.endTime != null and map.endTime != ''">
+ 		and p.startgps_time BETWEEN #{map.startTime} AND #{map.endTime}
+		</if>
+		)) p on p.simCard = t.simCard
+		where
+			 b.delStatus = 0
+				AND s.`headID` = 24
+    GROUP BY s.`subID`,b.`roulesID`) c
+	 where a.subName = b.subName and c.subName = b.subName
+	</select>
+
+<!--	<select id="speedListBusDataCount" parameterType="map" resultType="Integer">
+		SELECT COUNT(1) FROM
+		(SELECT
+		max(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s')) AS endgps_time,
+		min(DATE_FORMAT(c.gps_time,'%Y-%m-%d %H:%i:%s')) AS startgps_time,
+		round(unix_timestamp(c.gps_time)/(10 * 60))  as time,
+		DATE_FORMAT(c.server_time,'%Y-%m-%d %H:%i:%s') AS server_time,
+		BIN(c.state) AS state,
+		BIN(c.alarm) AS alarm,
+		c.latitude,
+		c.longitude,
+		c.altitude,
+		c.speed,
+		IF(b.`busNO` is null or b.`busNO` = '',b.`plateNO`,CONCAT(b.`busNO`,'-', b.`plateNO`)) AS plateNO,
+		r.`roulesID` AS companyID,
+		r.`roulesName` AS companyName,
+		b.busID
+		FROM
+		busInfo b
+		LEFT JOIN ${map.tableName} c
+		ON c.`busID` = b.`busID`
+		LEFT JOIN org_roules r
+		ON b.`roulesID` = r.`roulesID`
+		<where>
+			1=1
+			<if test="map.authLeave != null and map.authLeave == 1 and map.companyID != 1">
+				AND r.`headID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave != null and map.authLeave == 2">
+				AND r.`subID` = #{map.companyID}
+			</if>
+			<if test="map.authLeave != null and map.authLeave == 3">
+				AND b.roulesID = #{map.companyID}
+			</if>
+			and substring(bin(c.alarm),-2, 1) = 1
+			and c.gps_time BETWEEN #{map.startTime} AND #{map.endTime}
+		</where>
+		GROUP BY time) q
+	</select>-->
+</mapper>

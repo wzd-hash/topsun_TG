@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN" "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+
+<mapper namespace="com.topsun.mapper.RemoteMapper">
+
+	<insert id="sendCommand" useGeneratedKeys="true" keyProperty="id" parameterType="com.topsun.entity.RemoteInfo">
+		INSERT INTO `VIDEO_REMOTE_ZTC`.`${cmdID}`(
+		bus_id,
+		cmd_id,
+		send_info,
+		send_time
+		) 
+		VALUES(
+			#{busID},
+			#{cmdID},
+			#{sendInfo},
+			NOW()
+		)
+	</insert>
+	
+	<insert id="insertVideoHistory" parameterType="map">
+		INSERT INTO VIDEO_REMOTE_ZTC.`${cmdID}`(
+		  bus_id,
+		  simCard,
+		  channelNO,
+		  send_info,
+		  send_time,
+		  optType
+		) 
+		VALUES(
+			#{busID},
+			#{simCard},
+			#{channelNO},
+			#{content},
+			NOW(),
+			#{optType}
+		)
+	</insert>
+
+	<select id="queryRemoteInfo" parameterType="map" resultType="com.topsun.entity.RemoteInfo">
+		SELECT
+			id,
+			bus_id AS busID,
+			cmd_id AS cmdID,
+			send_info AS sendInfo,
+			send_time AS sendTime,
+			response_info AS responseInfo,
+			cmd_state AS cmdState
+		FROM `VIDEO_REMOTE_ZTC`.`${map.cmdID}` WHERE id = #{map.id}
+	</select>
+	
+	
+</mapper>
